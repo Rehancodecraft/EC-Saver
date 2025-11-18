@@ -1,0 +1,18 @@
+IMPORTANT: Place the Rescue 1122 Punjab logo here!
+
+Required file: logo.png
+
+Specifications:
+- Format: PNG
+- Size: 512x512 pixels (minimum)
+- Aspect Ratio: 1:1 (square)
+- Transparent background (preferred)
+
+The logo image you provided should be saved as:
+assets/images/logo.png
+
+After adding the logo, delete this file and run:
+flutter pub get
+flutter run
+
+For detailed instructions, see: LOGO_INSTRUCTIONS.md
