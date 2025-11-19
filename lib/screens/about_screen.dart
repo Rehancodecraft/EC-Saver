@@ -107,52 +107,47 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
 
             // Key Features
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.star, color: AppColors.secondaryGreen),
-                        SizedBox(width: AppSpacing.sm),
-                        Text(
-                          'Key Features',
-                          style: AppTextStyles.subheading,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    const _FeatureItem(
-                      icon: Icons.offline_bolt,
-                      title: 'Offline First',
-                      description: 'Works 100% offline with local database',
-                    ),
-                    const _FeatureItem(
-                      icon: Icons.emergency,
-                      title: 'Quick Entry',
-                      description: 'Fast emergency case recording',
-                    ),
-                    const _FeatureItem(
-                      icon: Icons.folder,
-                      title: 'Organized Records',
-                      description: 'Month-wise grouping and easy search',
-                    ),
-                    const _FeatureItem(
-                      icon: Icons.picture_as_pdf,
-                      title: 'Export Reports',
-                      description: 'Generate PDF reports for monthly data',
-                    ),
-                    const _FeatureItem(
-                      icon: Icons.security,
-                      title: 'Secure',
-                      description: 'All data stored locally on device',
-                    ),
-                  ],
-                ),
+            const Text(
+              'Key Features',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
               ),
             ),
+            const SizedBox(height: 20),
+            // Feature 1
+            _buildFeatureItem(
+              Icons.save_outlined,
+              'Save Emergency Cases',
+              'Quick and easy emergency case recording',
+              Colors.grey, // Changed from AppColors.secondaryGreen
+            ),
+
+            // Feature 2
+            _buildFeatureItem(
+              Icons.analytics_outlined,
+              'Professional Records',
+              'Maintain organized professional records',
+              Colors.grey, // Changed from AppColors.medicalBlue
+            ),
+
+            // Feature 3
+            _buildFeatureItem(
+              Icons.security_outlined,
+              'Private & Secure',
+              'Your data stays on your device',
+              Colors.grey, // Changed from AppColors.primaryRed
+            ),
+
+            // Feature 4
+            _buildFeatureItem(
+              Icons.location_city_outlined,
+              'Multi-District Support',
+              'Covers all 46 districts of Punjab',
+              Colors.grey, // Changed from AppColors.accidentOrange
+            ),
+
             const SizedBox(height: AppSpacing.md),
 
             // Developed By Section
@@ -230,39 +225,22 @@ class AboutScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-class _FeatureItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-
-  const _FeatureItem({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFeatureItem(IconData icon, String title, String description, Color color) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color: AppColors.secondaryGreen.withOpacity(0.1),
-              shape: BoxShape.circle,
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: AppColors.secondaryGreen,
-            ),
+            child: Icon(icon, color: color, size: 28),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,13 +248,18 @@ class _FeatureItem extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    color: AppColors.textDark,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   description,
-                  style: AppTextStyles.caption,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
                 ),
               ],
             ),
