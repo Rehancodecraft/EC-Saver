@@ -8,8 +8,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:open_file/open_file.dart';
 
 class UpdateService {
-  // REPLACE WITH YOUR GITHUB INFO
-  static const String githubOwner = 'YOUR_GITHUB_USERNAME';
+  // UPDATE WITH YOUR ACTUAL GITHUB INFO
+  static const String githubOwner = 'Rehancodecraft'; // Your GitHub username
   static const String githubRepo = 'EC-Saver';
   static const String githubApiUrl = 'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
@@ -19,16 +19,29 @@ class UpdateService {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
+      print('DEBUG: Checking for updates...');
+      print('DEBUG: Current version: $currentVersion');
+
       // Fetch latest release from GitHub
-      final response = await http.get(Uri.parse(githubApiUrl));
+      final response = await http.get(
+        Uri.parse(githubApiUrl),
+        headers: {'Accept': 'application/vnd.github.v3+json'},
+      );
+
+      print('DEBUG: GitHub API response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final latestVersion = data['tag_name'].replaceAll('v', '');
+        final latestVersion = data['tag_name'].toString().replaceAll('v', '');
         final apkUrl = _getApkDownloadUrl(data['assets']);
 
-        print('DEBUG: Current version: $currentVersion');
         print('DEBUG: Latest version: $latestVersion');
+        print('DEBUG: Download URL: $apkUrl');
+
+        if (apkUrl.isEmpty) {
+          print('DEBUG: No APK found in release');
+          return {'updateAvailable': false};
+        }
 
         if (_isUpdateAvailable(currentVersion, latestVersion)) {
           return {

@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadUserProfile();
     _loadMonthlyStats();
-    _checkForUpdates();
+    _checkForUpdates(); // Keep this
   }
 
   Future<void> _loadMonthlyStats() async {
@@ -84,65 +84,96 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkForUpdates() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
-
-    final updateInfo = await UpdateService.checkForUpdates();
-    if (updateInfo != null && mounted) {
-      _showUpdateDialog(updateInfo);
+    try {
+      final updateInfo = await UpdateService.checkForUpdate(); // Fixed method name
+      
+      if (updateInfo['updateAvailable'] == true) {
+        if (mounted) {
+          // Show custom dialog with manual download option
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.system_update, color: AppColors.primaryRed),
+                  SizedBox(width: 12),
+                  Text('Update Available'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Version ${updateInfo['latestVersion']}', // Fixed: version → latestVersion
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(updateInfo['releaseNotes'] ?? 'New update available'),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '⚠️ Please update to continue',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _downloadAndInstall(updateInfo['downloadUrl']);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryRed,
+                  ),
+                  child: const Text('Update Now'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('DEBUG: Update check error: $e');
     }
   }
 
-  void _showUpdateDialog(Map<String, dynamic> updateInfo) {
-    showDialog(
-      context: context,
-      barrierDismissible: !updateInfo['forceUpdate'],
-      builder: (context) => UpdateDialog(
-        version: updateInfo['version'],
-        releaseNotes: updateInfo['releaseNotes'],
-        apkUrl: updateInfo['apkUrl'],
-        forceUpdate: updateInfo['forceUpdate'],
-        fileSize: updateInfo['fileSize'],
-        onUpdatePressed: () {
-          Navigator.of(context).pop();
-          _startDownload(updateInfo['apkUrl']);
-        },
-      ),
-    );
-  }
-
-  void _startDownload(String apkUrl) {
-    double progress = 0;
-    String downloadedSize = '0 MB';
-    String totalSize = '0 MB';
-
+  Future<void> _downloadAndInstall(String apkUrl) async {
+    // Show progress dialog
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          UpdateService.downloadAndInstallAPK(apkUrl, (received, total) {
-            setState(() {
-              progress = (received / total) * 100;
-              downloadedSize = '${(received / 1048576).toStringAsFixed(1)} MB';
-              totalSize = '${(total / 1048576).toStringAsFixed(1)} MB';
-            });
-          }).then((success) {
-            if (mounted) {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(success ? 'Update downloaded! Installing...' : 'Update failed. Please try again.'),
-                  backgroundColor: success ? AppColors.secondaryGreen : Colors.red,
-                ),
-              );
-            }
-          });
+          double progress = 0.0;
+          
+          // Start download
+          UpdateService.downloadAndInstallUpdate( // Fixed method name
+            apkUrl,
+            (downloadProgress) {
+              setState(() {
+                progress = downloadProgress;
+              });
+            },
+          );
 
-          return DownloadProgressDialog(
-            progress: progress,
-            downloadedSize: downloadedSize,
-            totalSize: totalSize,
+          return AlertDialog(
+            title: const Text('Downloading Update'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LinearProgressIndicator(value: progress),
+                const SizedBox(height: 16),
+                Text('${(progress * 100).toInt()}%'),
+              ],
+            ),
           );
         },
       ),
