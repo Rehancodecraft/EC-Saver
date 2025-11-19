@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/emergency.dart';
 import '../services/database_service.dart';
@@ -19,58 +20,56 @@ class EmergencyFormScreen extends StatefulWidget {
 class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _ecNumberController = TextEditingController();
-  final _locationController = TextEditingController();
+  final _emergencyTypeController = TextEditingController();
   final _notesController = TextEditingController();
+  final DatabaseService _databaseService = DatabaseService();
 
-  DateTime _selectedDateTime = DateTime.now();
-  String? _selectedType;
-  bool _isLoading = false;
+  DateTime? _selectedDate;
   bool _isLateEntry = false;
+  bool _isSaving = false;
+
+  // Track if form has any input
+  bool _hasInput = false;
 
   @override
   void initState() {
     super.initState();
-    // Pre-select emergency type if provided
-    _selectedType = widget.preSelectedType;
-    _checkIfLateEntry();
+    _selectedDate = DateTime.now();
+
+    // Listen to form changes
+    _ecNumberController.addListener(_checkFormInput);
+    _emergencyTypeController.addListener(_checkFormInput);
+    _notesController.addListener(_checkFormInput);
+  }
+
+  void _checkFormInput() {
+    setState(() {
+      _hasInput = _ecNumberController.text.isNotEmpty ||
+          _emergencyTypeController.text.isNotEmpty ||
+          _notesController.text.isNotEmpty;
+    });
   }
 
   @override
   void dispose() {
     _ecNumberController.dispose();
-    _locationController.dispose();
+    _emergencyTypeController.dispose();
     _notesController.dispose();
     super.dispose();
-  }
-
-  void _checkIfLateEntry() {
-    final now = DateTime.now();
-    final selectedDate = DateTime(
-      _selectedDateTime.year,
-      _selectedDateTime.month,
-      _selectedDateTime.day,
-    );
-    final today = DateTime(now.year, now.month, now.day);
-
-    setState(() {
-      _isLateEntry = selectedDate.isBefore(today);
-    });
   }
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDateTime,
+      initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      helpText: 'Select Emergency Date',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: AppColors.primaryRed,
               onPrimary: Colors.white,
-              surface: Colors.white,
               onSurface: Colors.black,
             ),
           ),
@@ -81,271 +80,273 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
 
     if (picked != null) {
       setState(() {
-        _selectedDateTime = picked;
-        _checkIfLateEntry();
+        _selectedDate = picked;
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final selectedDay = DateTime(picked.year, picked.month, picked.day);
+        _isLateEntry = selectedDay.isBefore(today);
       });
     }
   }
 
   Future<void> _saveEmergency() async {
     if (!_formKey.currentState!.validate()) {
+      print('DEBUG: Form validation failed');
       return;
     }
 
-    if (_selectedType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select emergency type'),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
+    setState(() => _isSaving = true);
 
     try {
+      print('DEBUG: Creating emergency object');
+      
       final emergency = Emergency(
         ecNumber: _ecNumberController.text.trim(),
-        emergencyDate: _selectedDateTime,
-        emergencyType: _selectedType!,
-        location: _locationController.text.trim().isEmpty
-            ? null
-            : _locationController.text.trim(),
-        notes: _notesController.text.trim().isEmpty
-            ? null
+        emergencyDate: _selectedDate!,
+        emergencyType: _emergencyTypeController.text.trim(),
+        location: null,
+        notes: _notesController.text.trim().isEmpty 
+            ? null 
             : _notesController.text.trim(),
         isLateEntry: _isLateEntry,
         createdAt: DateTime.now(),
-        createdBy: 1,
+        createdBy: null,
       );
 
-      await DatabaseService().saveEmergency(emergency);
+      print('DEBUG: Emergency object created - EC: ${emergency.ecNumber}, Type: ${emergency.emergencyType}');
+      print('DEBUG: Date: ${emergency.emergencyDate}, Late Entry: ${emergency.isLateEntry}');
 
-      if (!mounted) return;
+      final id = await _databaseService.saveEmergency(emergency);
+      
+      print('DEBUG: Emergency saved successfully with ID: $id');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Emergency saved successfully!'),
-          backgroundColor: AppColors.successGreen,
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Emergency case saved successfully! (ID: $id)'),
+            backgroundColor: AppColors.secondaryGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate success
+      }
     } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: AppColors.errorRed,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      print('DEBUG: Error in _saveEmergency: $e');
+      print('DEBUG: Error type: ${e.runtimeType}');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save emergency: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isSaving = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final String formTitle = widget.preSelectedType != null
-        ? 'New ${widget.preSelectedType}'
-        : 'Enter New Emergency';
-
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(formTitle),
+        title: const Text('New Emergency Case'),
         backgroundColor: AppColors.primaryRed,
-        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // EC Number
-                    TextFormField(
-                      controller: _ecNumberController,
-                      decoration: const InputDecoration(
-                        labelText: 'EC Number *',
-                        hintText: 'Enter 6-digit EC number',
-                        prefixIcon: Icon(Icons.numbers),
-                      ),
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter EC number';
-                        }
-                        if (value.length != 6) {
-                          return 'EC number must be 6 digits';
-                        }
-                        if (!RegExp(r'^\d+$').hasMatch(value)) {
-                          return 'EC number must contain only digits';
-                        }
-                        return null;
-                      },
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // EC Number (Remove * from label)
+                TextFormField(
+                  controller: _ecNumberController,
+                  decoration: InputDecoration(
+                    labelText: 'EC Number',
+                    prefixIcon: const Icon(Icons.numbers),
+                    hintText: '123456',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter EC number';
+                    }
+                    return null;
+                  },
+                ),
 
-                    const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: 16),
 
-                    // Date Picker
-                    InkWell(
-                      onTap: _selectDate,
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Emergency Date *',
-                          prefixIcon: const Icon(Icons.calendar_today),
-                          suffixIcon: _isLateEntry
-                              ? const Tooltip(
-                                  message: 'Late Entry',
-                                  child: Icon(Icons.warning, color: AppColors.errorRed),
-                                )
-                              : null,
-                        ),
-                        child: Text(
-                          DateFormat('dd-MMM-yyyy').format(_selectedDateTime),
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
+                // Emergency Date (Change calendar icon color to match others)
+                InkWell(
+                  onTap: _selectDate,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-
-                    if (_isLateEntry) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        decoration: BoxDecoration(
-                          color: AppColors.errorRed.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                          border: Border.all(color: AppColors.errorRed),
-                        ),
-                        child: const Row(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today), // Removed color to match other fields
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.warning, color: AppColors.errorRed, size: 20),
-                            SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: Text(
-                                'This is a late entry (past date)',
-                                style: TextStyle(
-                                  color: AppColors.errorRed,
-                                  fontSize: 12,
+                            const Text(
+                              'Emergency Date',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _selectedDate != null
+                                  ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                  : 'Select date',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        if (_isLateEntry)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Late Entry',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Emergency Type (Remove * from label)
+                TextFormField(
+                  controller: _emergencyTypeController,
+                  decoration: InputDecoration(
+                    labelText: 'Emergency Type',
+                    prefixIcon: const Icon(Icons.emergency),
+                    hintText: 'e.g., Road Accident',
+                    helperText: 'Max 2 words, 20 characters',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  maxLength: 20,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter emergency type';
+                    }
+                    final words = value.trim().split(' ');
+                    if (words.length > 2) {
+                      return 'Maximum 2 words allowed';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Notes (Remove "Optional" text)
+                TextFormField(
+                  controller: _notesController,
+                  decoration: InputDecoration(
+                    labelText: 'Notes',
+                    prefixIcon: const Icon(Icons.note_alt),
+                    hintText: 'Additional details...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  maxLines: 4,
+                  maxLength: 500,
+                ),
+
+                const SizedBox(height: 32),
+
+                // Save Button (Red if no input, Green if has input)
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isSaving ? null : _saveEmergency,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _hasInput
+                          ? AppColors.secondaryGreen
+                          : AppColors.primaryRed,
+                      disabledBackgroundColor: Colors.grey[400],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 3,
+                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _hasInput ? Icons.check_circle_outline : Icons.save,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _hasInput ? 'SAVE EMERGENCY' : 'FILL FORM TO SAVE',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 1,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Emergency Type - CHECKBOXES
-                    const Text(
-                      'Emergency Type *',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-
-                    ...EmergencyType.getAll().map((type) {
-                      final isDisabled = widget.preSelectedType != null &&
-                          widget.preSelectedType != type;
-                      return CheckboxListTile(
-                        value: _selectedType == type,
-                        onChanged: isDisabled
-                            ? null
-                            : (bool? value) {
-                                setState(() {
-                                  _selectedType = value == true ? type : null;
-                                });
-                              },
-                        title: Row(
-                          children: [
-                            Icon(
-                              EmergencyType.getIcon(type),
-                              color: EmergencyType.getColor(type),
-                              size: 24,
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              type,
-                              style: TextStyle(
-                                color: isDisabled
-                                    ? AppColors.textLight
-                                    : AppColors.textDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                        activeColor: EmergencyType.getColor(type),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                      );
-                    }).toList(),
-
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Location
-                    TextFormField(
-                      controller: _locationController,
-                      decoration: const InputDecoration(
-                        labelText: 'Location (Optional)',
-                        hintText: 'Enter location details',
-                        prefixIcon: Icon(Icons.location_on),
-                      ),
-                      maxLength: 200,
-                    ),
-
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Notes
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes (Optional)',
-                        hintText: 'Additional information',
-                        prefixIcon: Icon(Icons.notes),
-                      ),
-                      maxLines: 3,
-                      maxLength: 500,
-                    ),
-
-                    const SizedBox(height: AppSpacing.xl),
-
-                    // Save Button
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _saveEmergency,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                      ),
-                      child: Text(
-                        widget.preSelectedType != null
-                            ? 'Save ${widget.preSelectedType}'
-                            : 'Save Emergency',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                            ],
+                          ),
+                  ),
                 ),
-              ),
+              ],
             ),
+          ),
+        ),
+      ),
     );
   }
 }

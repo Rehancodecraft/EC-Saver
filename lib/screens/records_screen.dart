@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/emergency.dart';
 import '../services/database_service.dart';
+import '../services/pdf_service.dart';
 import '../utils/constants.dart';
 import '../widgets/emergency_card.dart';
+import '../widgets/drawer_menu.dart'; // Import DrawerMenu
 
 class RecordsScreen extends StatefulWidget {
   const RecordsScreen({super.key});
@@ -21,11 +23,17 @@ class _RecordsScreenState extends State<RecordsScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<String> _availableMonths = [];
+  bool _isSelectionMode = false;
+  Set<String> _selectedMonths = {};
+  List<String> _allMonths = [];
+
+  final DatabaseService _databaseService = DatabaseService(); // Initialize here
 
   @override
   void initState() {
     super.initState();
-    _loadEmergencies();
+    _loadRecords();
+    _generateAllMonths();
   }
 
   @override
@@ -34,67 +42,62 @@ class _RecordsScreenState extends State<RecordsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadEmergencies() async {
+  void _generateAllMonths() {
+    // Don't generate default months - leave empty
+    // Months will only show if they have data
+    setState(() {
+      _allMonths = [];
+    });
+  }
+
+  Future<void> _loadRecords() async {
     setState(() => _isLoading = true);
 
     try {
       final dbService = DatabaseService();
       List<Emergency> emergencies;
 
-      // Apply search
       if (_searchController.text.isNotEmpty) {
         emergencies = await dbService.searchEmergencies(_searchController.text);
-      } else if (_selectedFilter != null && _selectedFilter != 'All') {
+      } else if (_selectedFilter != null) {
         emergencies = await dbService.filterEmergenciesByType(_selectedFilter!);
       } else {
         emergencies = await dbService.getAllEmergencies();
       }
 
-      // Apply month filter
-      if (_selectedMonth != null) {
-        emergencies = emergencies.where((e) => e.getMonthYear() == _selectedMonth).toList();
-      }
-
-      // Apply date filter
-      if (_selectedDate != null) {
-        final filterDate = DateTime(
-          _selectedDate!.year,
-          _selectedDate!.month,
-          _selectedDate!.day,
-        );
-        emergencies = emergencies.where((e) {
-          final eDate = DateTime(
-            e.emergencyDate.year,
-            e.emergencyDate.month,
-            e.emergencyDate.day,
-          );
-          return eDate == filterDate;
-        }).toList();
-      }
-
       // Group by month
       final Map<String, List<Emergency>> grouped = {};
-      final Set<String> months = {};
-      
-      for (var emergency in emergencies) {
+      for (final emergency in emergencies) {
         final monthYear = emergency.getMonthYear();
-        months.add(monthYear);
-        
         if (!grouped.containsKey(monthYear)) {
           grouped[monthYear] = [];
         }
         grouped[monthYear]!.add(emergency);
       }
 
-      // Sort months descending
-      _availableMonths = months.toList()..sort((a, b) => b.compareTo(a));
+      // Extract months that have data and sort DESCENDING (newest first)
+      final uniqueMonths = grouped.keys.toList();
+      uniqueMonths.sort((a, b) {
+        final dateA = DateFormat('MMMM yyyy').parse(a);
+        final dateB = DateFormat('MMMM yyyy').parse(b);
+        return dateB.compareTo(dateA); // DESCENDING order (Nov 2025 before Jul 2024)
+      });
 
       setState(() {
         _groupedEmergencies = grouped;
+        _allMonths = uniqueMonths;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading records: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
     }
   }
 
@@ -137,7 +140,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       setState(() {
         _selectedMonth = selected == 'all' ? null : selected;
       });
-      _loadEmergencies();
+      _loadRecords();
     }
   }
 
@@ -166,7 +169,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       setState(() {
         _selectedDate = picked;
       });
-      _loadEmergencies();
+      _loadRecords();
     }
   }
 
@@ -177,7 +180,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       _selectedFilter = null;
       _searchController.clear();
     });
-    _loadEmergencies();
+    _loadRecords();
   }
 
   String _formatMonthYear(String monthYear) {
@@ -261,7 +264,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
             backgroundColor: AppColors.successGreen,
           ),
         );
-        _loadEmergencies();
+        _loadRecords();
       }
     } catch (e) {
       if (mounted) {
@@ -275,11 +278,259 @@ class _RecordsScreenState extends State<RecordsScreen> {
     }
   }
 
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) {
+        _selectedMonths.clear();
+      }
+    });
+  }
+
+  void _toggleMonthSelection(String month) {
+    setState(() {
+      if (_selectedMonths.contains(month)) {
+        _selectedMonths.remove(month);
+      } else {
+        _selectedMonths.add(month);
+      }
+    });
+  }
+
+  Future<void> _deleteSelectedMonths() async {
+    if (_selectedMonths.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Records'),
+        content: Text('Delete ${_selectedMonths.length} month(s) of records?\n\nThis action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        for (final month in _selectedMonths) {
+          await DatabaseService().deleteEmergenciesByMonth(month);
+        }
+        
+        setState(() {
+          _selectedMonths.clear();
+          _isSelectionMode = false;
+        });
+        
+        _loadRecords();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Selected months deleted successfully'),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteEmergency(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Record'),
+        content: const Text('Are you sure you want to delete this emergency record?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _databaseService.deleteEmergency(id);
+        await _loadRecords(); // Reload after delete
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Record deleted successfully'),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showPrintDialog() async {
+    if (_allMonths.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No records to print')),
+      );
+      return;
+    }
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Print Records'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.select_all, color: AppColors.primaryRed),
+              title: const Text('Print All Months'),
+              onTap: () => Navigator.pop(context, 'all'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_month, color: AppColors.secondaryGreen),
+              title: const Text('Select Month(s)'),
+              onTap: () => Navigator.pop(context, 'select'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == 'all') {
+      _printAllMonths();
+    } else if (result == 'select') {
+      _selectMonthsToPrint();
+    }
+  }
+
+  Future<void> _printAllMonths() async {
+    try {
+      await PdfService.generateAndPrintPdf(
+        groupedEmergencies: _groupedEmergencies,
+        selectedMonths: _allMonths,
+        title: 'All Records',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _selectMonthsToPrint() async {
+    final selectedMonths = <String>[];
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Select Months to Print'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _allMonths.length,
+              itemBuilder: (context, index) {
+                final month = _allMonths[index];
+                final isSelected = selectedMonths.contains(month);
+                return CheckboxListTile(
+                  title: Text(month),
+                  subtitle: Text('${_groupedEmergencies[month]?.length ?? 0} records'),
+                  value: isSelected,
+                  onChanged: (checked) {
+                    setState(() {
+                      if (checked == true) {
+                        selectedMonths.add(month);
+                      } else {
+                        selectedMonths.remove(month);
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: selectedMonths.isEmpty 
+                  ? null 
+                  : () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryRed,
+              ),
+              child: const Text('Print'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true && selectedMonths.isNotEmpty) {
+      try {
+        await PdfService.generateAndPrintPdf(
+          groupedEmergencies: _groupedEmergencies,
+          selectedMonths: selectedMonths,
+          title: 'Selected Months',
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error generating PDF: $e'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasFilters = _selectedMonth != null || 
                       _selectedDate != null || 
-                      _selectedFilter != null ||
                       _searchController.text.isNotEmpty;
 
     return Scaffold(
@@ -289,310 +540,386 @@ class _RecordsScreenState extends State<RecordsScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.print),
+            onPressed: _showPrintDialog,
+            tooltip: 'Print Records',
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadEmergencies,
+            onPressed: _loadRecords,
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by EC number, location...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _loadEmergencies();
-                        },
-                      )
-                    : null,
-              ),
-              onChanged: (value) => _loadEmergencies(),
-            ),
-          ),
-
-          // Filter Buttons Row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Row(
+      drawer: const DrawerMenu(currentRoute: '/records'),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _selectMonth,
-                    icon: const Icon(Icons.calendar_month, size: 18),
-                    label: Text(
-                      _selectedMonth != null 
-                          ? _formatMonthYear(_selectedMonth!)
-                          : 'Filter by Month',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _selectedMonth != null 
-                          ? AppColors.primaryRed 
-                          : AppColors.textDark,
-                      side: BorderSide(
-                        color: _selectedMonth != null 
-                            ? AppColors.primaryRed 
-                            : AppColors.dividerColor,
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) => _loadRecords(),
+                    decoration: InputDecoration(
+                      hintText: 'Search by EC',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                _loadRecords();
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _selectDate,
-                    icon: const Icon(Icons.event, size: 18),
-                    label: Text(
-                      _selectedDate != null
-                          ? DateFormat('dd-MMM-yyyy').format(_selectedDate!)
-                          : 'Filter by Date',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _selectedDate != null 
-                          ? AppColors.primaryRed 
-                          : AppColors.textDark,
-                      side: BorderSide(
-                        color: _selectedDate != null 
-                            ? AppColors.primaryRed 
-                            : AppColors.dividerColor,
+
+                // Filter Buttons - ONLY Month and Date
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Row(
+                    children: [
+                      // Filter by Month Button
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _selectMonth,
+                          icon: const Icon(Icons.calendar_month, size: 18),
+                          label: Text(
+                            _selectedMonth != null 
+                                ? _formatMonthYear(_selectedMonth!) 
+                                : 'Filter by Month',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _selectedMonth != null 
+                                ? AppColors.primaryRed 
+                                : Colors.grey[700],
+                            side: BorderSide(
+                              color: _selectedMonth != null 
+                                  ? AppColors.primaryRed 
+                                  : Colors.grey[400]!,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      
+                      // Filter by Date Button
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _selectDate,
+                          icon: const Icon(Icons.event, size: 18),
+                          label: Text(
+                            _selectedDate != null 
+                                ? DateFormat('dd MMM yyyy').format(_selectedDate!) 
+                                : 'Filter by Date',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _selectedDate != null 
+                                ? AppColors.primaryRed 
+                                : Colors.grey[700],
+                            side: BorderSide(
+                              color: _selectedDate != null 
+                                  ? AppColors.primaryRed 
+                                  : Colors.grey[400]!,
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Clear Filters Button (if any filter is active)
+                      if (hasFilters) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _clearFilters,
+                          icon: const Icon(Icons.clear),
+                          color: AppColors.errorRed,
+                          tooltip: 'Clear Filters',
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
+                
+                const SizedBox(height: AppSpacing.md),
 
-          const SizedBox(height: AppSpacing.sm),
-
-          // Filter Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Row(
-              children: [
-                if (hasFilters)
-                  Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: ActionChip(
-                      label: const Text('Clear All'),
-                      onPressed: _clearFilters,
-                      backgroundColor: AppColors.errorRed.withOpacity(0.1),
-                      side: const BorderSide(color: AppColors.errorRed),
-                    ),
-                  ),
-                _FilterChip(
-                  label: 'All',
-                  isSelected: _selectedFilter == null || _selectedFilter == 'All',
-                  onSelected: () {
-                    setState(() => _selectedFilter = 'All');
-                    _loadEmergencies();
-                  },
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                ...EmergencyType.getAll().map((type) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: _FilterChip(
-                      label: type,
-                      icon: EmergencyType.getIcon(type),
-                      color: EmergencyType.getColor(type),
-                      isSelected: _selectedFilter == type,
-                      onSelected: () {
-                        setState(() => _selectedFilter = type);
-                        _loadEmergencies();
-                      },
-                    ),
-                  );
-                }).toList(),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: AppSpacing.md),
-
-          // Records List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _groupedEmergencies.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _loadEmergencies,
-                        child: ListView.builder(
-                          itemCount: _groupedEmergencies.length,
+                // Records List
+                Expanded(
+                  child: _allMonths.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No records found',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _allMonths.length,
                           itemBuilder: (context, index) {
-                            final monthYear = _groupedEmergencies.keys.elementAt(index);
-                            final emergencies = _groupedEmergencies[monthYear]!;
+                            final month = _allMonths[index];
+                            final emergencies = _groupedEmergencies[month] ?? [];
+                            final hasRecords = emergencies.isNotEmpty;
 
-                            return _MonthSection(
-                              monthYear: monthYear,
-                              emergencies: emergencies,
-                              formatMonthYear: _formatMonthYear,
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  // Month Header with Delete Button
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: hasRecords 
+                                          ? AppColors.primaryRed.withOpacity(0.1)
+                                          : Colors.grey[100],
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(12),
+                                        topRight: Radius.circular(12),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_month,
+                                          color: hasRecords ? AppColors.primaryRed : Colors.grey,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            month,
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: hasRecords ? AppColors.textDark : Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: hasRecords ? AppColors.primaryRed : Colors.grey,
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            '${emergencies.length}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Delete Button
+                                        if (hasRecords)
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline),
+                                            color: AppColors.errorRed,
+                                            onPressed: () => _deleteMonthRecords(month),
+                                            tooltip: 'Delete Month',
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  
+                                  // Records List
+                                  if (hasRecords)
+                                    Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        children: _buildDateWiseRecords(emergencies),
+                                      ),
+                                    )
+                                  else
+                                    const Padding(
+                                      padding: EdgeInsets.all(24),
+                                      child: Text(
+                                        'No records for this month',
+                                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             );
                           },
                         ),
-                      ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+              ],
+            ),
+    );
+  }
+
+  // Build date-wise records method
+  List<Widget> _buildDateWiseRecords(List<Emergency> emergencies) {
+    // Group emergencies by date
+    final Map<String, List<Emergency>> dateGroups = {};
+    
+    for (final emergency in emergencies) {
+      final dateKey = DateFormat('dd MMM yyyy').format(emergency.emergencyDate);
+      if (!dateGroups.containsKey(dateKey)) {
+        dateGroups[dateKey] = [];
+      }
+      dateGroups[dateKey]!.add(emergency);
+    }
+
+    // Sort dates in descending order (latest first)
+    final sortedDates = dateGroups.keys.toList()
+      ..sort((a, b) {
+        final dateA = DateFormat('dd MMM yyyy').parse(a);
+        final dateB = DateFormat('dd MMM yyyy').parse(b);
+        return dateB.compareTo(dateA);
+      });
+
+    // Build widgets
+    final List<Widget> widgets = [];
+
+    for (final dateKey in sortedDates) {
+      final records = dateGroups[dateKey]!;
+
+      // Date Header
+      widgets.add(
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 8, top: 12),
+          decoration: BoxDecoration(
+            color: AppColors.primaryRed.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox,
-              size: 100,
-              color: AppColors.textLight.withOpacity(0.5),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const Text(
-              'No emergencies found',
-              style: AppTextStyles.subheading,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            if (_selectedMonth != null || _selectedDate != null)
-              const Text(
-                'Try changing the filter',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center,
-              )
-            else
-              const Text(
-                'Tap the button below to record your first emergency',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center,
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_today, size: 16, color: AppColors.primaryRed),
+              const SizedBox(width: 8),
+              Text(
+                dateKey,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryRed,
+                ),
               ),
-          ],
+              const Spacer(),
+              Text(
+                '${records.length} record${records.length > 1 ? 's' : ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-}
+      );
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final Color? color;
-  final bool isSelected;
-  final VoidCallback onSelected;
-
-  const _FilterChip({
-    required this.label,
-    this.icon,
-    this.color,
-    required this.isSelected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 16),
-            const SizedBox(width: AppSpacing.xs),
-          ],
-          Text(label),
-        ],
-      ),
-      selected: isSelected,
-      onSelected: (_) => onSelected(),
-      selectedColor: (color ?? AppColors.primaryRed).withOpacity(0.2),
-      checkmarkColor: color ?? AppColors.primaryRed,
-    );
-  }
-}
-
-class _MonthSection extends StatefulWidget {
-  final String monthYear;
-  final List<Emergency> emergencies;
-  final String Function(String) formatMonthYear;
-
-  const _MonthSection({
-    required this.monthYear,
-    required this.emergencies,
-    required this.formatMonthYear,
-  });
-
-  @override
-  State<_MonthSection> createState() => _MonthSectionState();
-}
-
-class _MonthSectionState extends State<_MonthSection> {
-  bool _isExpanded = true;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(
-        left: AppSpacing.md,
-        right: AppSpacing.md,
-        bottom: AppSpacing.md,
-      ),
-      child: Column(
-        children: [
-          // Month Header
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.formatMonthYear(widget.monthYear),
-                          style: AppTextStyles.subheading,
+      // Table for this date
+      widgets.add(
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              // Table Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'EC Number',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
                         ),
-                        Text(
-                          'Total: ${widget.emergencies.length} Emergencies',
-                          style: AppTextStyles.caption,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'Type',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
                         ),
-                      ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Table Rows
+              ...records.asMap().entries.map((entry) {
+                final index = entry.key;
+                final emergency = entry.value;
+                final isLast = index == records.length - 1;
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: index % 2 == 0 ? Colors.white : Colors.grey[50],
+                    border: Border(
+                      bottom: isLast 
+                          ? BorderSide.none 
+                          : BorderSide(color: Colors.grey[200]!, width: 1),
                     ),
                   ),
-                  Icon(
-                    _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          emergency.ecNumber,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryRed,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          emergency.emergencyType,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                );
+              }).toList(),
+            ],
           ),
+        ),
+      );
+    }
 
-          // Emergency List
-          if (_isExpanded) ...[
-            const Divider(height: 1),
-            ...widget.emergencies.map((emergency) {
-              return EmergencyCard(emergency: emergency);
-            }).toList(),
-          ],
-        ],
-      ),
-    );
+    return widgets;
   }
 }

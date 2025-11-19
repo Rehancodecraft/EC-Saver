@@ -12,8 +12,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -21,9 +20,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 800), // Reduced from 1200
       vsync: this,
     );
 
@@ -36,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
-    _initializeApp();
+    _checkRegistrationStatus();
   }
 
   @override
@@ -45,144 +43,132 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Future<void> _initializeApp() async {
-    try {
-      // Wait for splash animation
-      await Future.delayed(const Duration(seconds: 3));
+  Future<void> _checkRegistrationStatus() async {
+    await Future.delayed(const Duration(milliseconds: 1000)); // Reduced from 1500
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      // On web, just go to registration
-      if (kIsWeb) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const RegistrationScreen(),
-          ),
-        );
-        return;
-      }
-
-      // On mobile, check registration status
-      bool isRegistered = false;
-      try {
-        await DatabaseService().database;
-        isRegistered = await DatabaseService().isUserRegistered();
-      } catch (e) {
-        debugPrint('Database initialization error: $e');
-        isRegistered = false;
-      }
-
-      if (!mounted) return;
-
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => isRegistered
-              ? const HomeScreen()
-              : const RegistrationScreen(),
-        ),
-      );
-    } catch (e) {
-      debugPrint('Splash screen error: $e');
-      
-      if (!mounted) return;
-      
+    // On web, just go to registration
+    if (kIsWeb) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => const RegistrationScreen(),
         ),
       );
+      return;
     }
+
+    // On mobile, check registration status
+    bool isRegistered = false;
+    try {
+      await DatabaseService().database;
+      isRegistered = await DatabaseService().isUserRegistered();
+    } catch (e) {
+      debugPrint('Database initialization error: $e');
+      isRegistered = false;
+    }
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => isRegistered
+            ? const HomeScreen()
+            : const RegistrationScreen(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryRed,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animated Logo
-            ScaleTransition(
-              scale: _scaleAnimation,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 100,
-                      height: 100,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.medical_services,
-                          size: 80,
-                          color: AppColors.primaryRed,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: AppSpacing.xl),
-            
-            // App Name
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: const Text(
-                AppInfo.appName,
-                style: TextStyle(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.primaryRed,
+              Color(0xFFB71C1C),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Rescue 1122 Logo
+              Container(
+                width: 180,
+                height: 180,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
+                child: Image.asset(
+                  'assets/image/logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.local_hospital,
+                      size: 100,
+                      color: AppColors.primaryRed,
+                    );
+                  },
+                ),
               ),
-            ),
-            
-            const SizedBox(height: AppSpacing.sm),
-            
-            // Tagline
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: const Text(
-                AppInfo.tagline,
+
+              const SizedBox(height: 24),
+              
+              // App Name
+              const Text(
+                'EC Saver',
                 style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  letterSpacing: 0.5,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 2,
                 ),
               ),
-            ),
-            
-            const SizedBox(height: AppSpacing.xxl),
-            
-            // Loading Indicator
-            const SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
+              
+              const SizedBox(height: 8),
+              
+              // Subtitle
+              Text(
+                'Emergency Cases Saver',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.9),
+                  letterSpacing: 1,
+                ),
+              ),
+              
+              const SizedBox(height: 4),
+              
+              // Rescue 1122 Pakistan
+              Text(
+                'Rescue 1122 Pakistan',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+
+              const SizedBox(height: 60),
+              const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 strokeWidth: 3,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

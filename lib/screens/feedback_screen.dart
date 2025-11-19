@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models/user_profile.dart';
 import '../services/database_service.dart';
 import '../utils/constants.dart';
+import '../widgets/drawer_menu.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key});
@@ -13,47 +13,92 @@ class FeedbackScreen extends StatefulWidget {
 
 class _FeedbackScreenState extends State<FeedbackScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _messageController = TextEditingController();
-  UserProfile? _userProfile;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
-  }
+  bool _isSending = false;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _messageController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadUserProfile() async {
-    final profile = await DatabaseService().getUserProfile();
-    setState(() {
-      _userProfile = profile;
-    });
-  }
+  Future<void> _sendFeedback() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  Future<void> _openWhatsApp() async {
-    final phoneNumber = AppInfo.developerPhone.replaceAll(RegExp(r'[^\d+]'), '');
-    final message = Uri.encodeComponent(
-      'Hello NexiVault Tech Solutions,\n\n'
-      'I am using ${AppInfo.appName} and would like to get in touch regarding...'
-    );
-    
-    final url = Uri.parse('https://wa.me/$phoneNumber?text=$message');
+    setState(() => _isSending = true);
 
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
+      // Save to local database
+      await DatabaseService().insertFeedback(
+        _nameController.text.trim(),
+        _messageController.text.trim(),
+      );
+
+      // Prepare email content
+      final name = _nameController.text.trim();
+      final message = _messageController.text.trim();
+      
+      final subject = Uri.encodeComponent('EC Saver Feedback - $name');
+      final body = Uri.encodeComponent(message);
+
+      // Create mailto URL without queryParameters
+      final emailUrl = 'mailto:nexivault@gmail.com?subject=$subject&body=$body';
+      final Uri emailUri = Uri.parse(emailUrl);
+
+      bool launched = false;
+      
+      try {
+        launched = await launchUrl(
+          emailUri,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (e) {
+        print('Error launching email: $e');
+      }
+
+      if (mounted) {
+        if (launched) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Could not open WhatsApp. Please make sure WhatsApp is installed.'),
-              backgroundColor: AppColors.errorRed,
+              content: Text('✓ Opening email client...'),
+              backgroundColor: AppColors.secondaryGreen,
+            ),
+          );
+          _nameController.clear();
+          _messageController.clear();
+        } else {
+          // Fallback: Show email address to copy
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Email App Not Found'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Please send your feedback to:'),
+                  const SizedBox(height: 8),
+                  const SelectableText(
+                    'nexivault@gmail.com',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryRed,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Subject: EC Saver Feedback - $name'),
+                  const SizedBox(height: 8),
+                  Text('Message:\n$message'),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
             ),
           );
         }
@@ -62,261 +107,231 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error opening WhatsApp: ${e.toString()}'),
-            backgroundColor: AppColors.errorRed,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _submitFeedback() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await DatabaseService().insertFeedback(
-        _userProfile?.fullName ?? 'Anonymous',
-        _messageController.text.trim(),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Feedback submitted successfully!'),
-            backgroundColor: AppColors.successGreen,
-          ),
-        );
-
-        _messageController.clear();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error submitting feedback: ${e.toString()}'),
+            content: Text('Error: $e'),
             backgroundColor: AppColors.errorRed,
           ),
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Feedback'),
+        backgroundColor: AppColors.primaryRed,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
+      drawer: const DrawerMenu(currentRoute: '/feedback'),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Contact Card
-            Card(
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.secondaryGreen.withOpacity(0.1),
-                      AppColors.secondaryGreen.withOpacity(0.05),
-                    ],
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Icon
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: const Icon(
+                    Icons.feedback_outlined,
+                    size: 50,
+                    color: AppColors.primaryRed,
                   ),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Title
+              const Text(
+                'We Value Your Feedback',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 8),
+
+              // Subtitle
+              Text(
+                'Help us improve by sharing your thoughts, suggestions, or reporting any issues.',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 32),
+
+              // Name Field
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Your Name',
+                  hintText: 'Enter your name',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryRed, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Message Field
+              TextFormField(
+                controller: _messageController,
+                maxLines: 6,
+                decoration: InputDecoration(
+                  labelText: 'Your Feedback',
+                  hintText: 'Share your thoughts, suggestions, or report issues...',
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 100),
+                    child: Icon(Icons.message_outlined),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryRed, width: 2),
+                  ),
+                  alignLabelWithHint: true,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your feedback';
+                  }
+                  if (value.trim().length < 10) {
+                    return 'Please provide detailed feedback (min 10 characters)';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _isSending ? null : _sendFeedback,
+                  icon: _isSending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.send, size: 20),
+                  label: Text(
+                    _isSending ? 'Opening Email...' : 'Send Feedback via Email',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryRed,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Contact Info Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
                 ),
                 child: Column(
                   children: [
-                    const Icon(
-                      Icons.support_agent,
-                      size: 60,
-                      color: AppColors.secondaryGreen,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'Get in Touch',
+                    Icon(Icons.email_outlined, color: Colors.grey[700], size: 32),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Contact Email',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
+                    const SizedBox(height: 4),
                     const Text(
-                      'Contact NexiVault Tech Solutions for support, suggestions, or technical issues.',
-                      style: AppTextStyles.body,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // WhatsApp Button
-                    ElevatedButton.icon(
-                      onPressed: _openWhatsApp,
-                      icon: const Icon(Icons.chat, size: 24),
-                      label: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Chat on WhatsApp',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            AppInfo.developerPhone,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366), // WhatsApp green
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg,
-                          vertical: AppSpacing.md,
-                        ),
-                        minimumSize: const Size(double.infinity, 60),
+                      'nexivault@gmail.com',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryRed,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
 
-            // Divider
-            Row(
-              children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  child: Text(
-                    'OR',
-                    style: AppTextStyles.caption.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              const SizedBox(height: 16),
+
+              // Note
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryRed.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const Expanded(child: Divider()),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // Feedback Form
-            const Text(
-              'Submit Feedback',
-              style: AppTextStyles.subheading,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'Share your thoughts and help us improve the app',
-              style: AppTextStyles.caption,
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Name (pre-filled)
-                  TextFormField(
-                    initialValue: _userProfile?.fullName ?? '',
-                    decoration: const InputDecoration(
-                      labelText: 'Your Name',
-                      prefixIcon: Icon(Icons.person),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: AppColors.primaryRed, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Your feedback helps us improve the app for all rescuers.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[700],
+                        ),
+                      ),
                     ),
-                    enabled: false,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Message
-                  TextFormField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      labelText: 'Your Message',
-                      hintText: 'Share your feedback, suggestions, or issues...',
-                      prefixIcon: Icon(Icons.message),
-                      alignLabelWithHint: true,
-                    ),
-                    maxLines: 6,
-                    maxLength: 1000,
-                    textCapitalization: TextCapitalization.sentences,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your message';
-                      }
-                      if (value.trim().length < 10) {
-                        return 'Message must be at least 10 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Submit Button
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _submitFeedback,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryRed,
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text('Submit Feedback'),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Info Note
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.cardBackground,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 20,
-                    color: AppColors.textLight,
-                  ),
-                  SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      'Your feedback is stored locally and helps us understand user needs better. '
-                      'For urgent issues, please use WhatsApp for immediate response.',
-                      style: AppTextStyles.caption,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

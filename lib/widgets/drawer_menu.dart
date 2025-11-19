@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import '../models/user_profile.dart';
-import '../services/database_service.dart';
 import '../utils/constants.dart';
-import '../screens/home_screen.dart';
-import '../screens/records_screen.dart';
-import '../screens/about_screen.dart';
-import '../screens/feedback_screen.dart';
+import '../services/database_service.dart';
+import '../models/user_profile.dart';
 
 class DrawerMenu extends StatefulWidget {
-  const DrawerMenu({super.key});
+  final String currentRoute;
+
+  const DrawerMenu({
+    Key? key,
+    required this.currentRoute,
+  }) : super(key: key);
 
   @override
   State<DrawerMenu> createState() => _DrawerMenuState();
@@ -16,7 +17,6 @@ class DrawerMenu extends StatefulWidget {
 
 class _DrawerMenuState extends State<DrawerMenu> {
   UserProfile? _userProfile;
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -28,85 +28,101 @@ class _DrawerMenuState extends State<DrawerMenu> {
     final profile = await DatabaseService().getUserProfile();
     setState(() {
       _userProfile = profile;
-      _isLoading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      width: 260,
       child: Column(
         children: [
-          // Header
+          // Header with Logo
           Container(
             width: double.infinity,
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + AppSpacing.md,
-              bottom: AppSpacing.md,
-              left: AppSpacing.md,
-              right: AppSpacing.md,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.primaryRed,
-                  Color(0xFFB71C1C),
-                ],
-              ),
+              color: AppColors.primaryRed,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                // Logo and App Name Row
+                Row(
+                  children: [
+                    // Logo
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                  ),
+                      padding: const EdgeInsets.all(6),
+                      child: Image.asset(
+                        'assets/image/logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.local_hospital,
+                            size: 30,
+                            color: AppColors.primaryRed,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // EC Saver Text
+                    const Text(
+                      'EC Saver',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                if (_isLoading)
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  )
-                else if (_userProfile != null) ...[
+                const SizedBox(height: 12),
+
+                // User Info
+                if (_userProfile != null) ...[
                   Text(
                     _userProfile!.fullName,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: 4),
                   Text(
                     _userProfile!.designation,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '${_userProfile!.district}, ${_userProfile!.tehsil}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_userProfile!.district} • ${_userProfile!.tehsil}',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 11,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ] else ...[
+                  Text(
+                    'Emergency Cases Saver',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 11,
                     ),
                   ),
                 ],
@@ -117,54 +133,63 @@ class _DrawerMenuState extends State<DrawerMenu> {
           // Menu Items
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                _DrawerMenuItem(
-                  icon: Icons.home,
-                  title: 'Home',
+                // Home
+                ListTile(
+                  leading: const Icon(Icons.home, color: Colors.grey),
+                  title: const Text('Home'),
+                  selected: widget.currentRoute == '/home',
+                  selectedTileColor: AppColors.primaryRed.withOpacity(0.1),
                   onTap: () {
                     Navigator.pop(context);
-                    if (!context.mounted) return;
-
-                    if (ModalRoute.of(context)?.settings.name != '/home') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const HomeScreen()),
-                      );
+                    if (widget.currentRoute != '/home') {
+                      Navigator.pushReplacementNamed(context, '/home');
                     }
                   },
                 ),
-                _DrawerMenuItem(
-                  icon: Icons.list_alt,
-                  title: 'Records',
+
+                // View Records
+                ListTile(
+                  leading: const Icon(Icons.list_alt, color: Colors.grey),
+                  title: const Text('View Records'),
+                  selected: widget.currentRoute == '/records',
+                  selectedTileColor: AppColors.medicalBlue.withOpacity(0.1),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const RecordsScreen()),
-                    );
+                    if (widget.currentRoute != '/records') {
+                      Navigator.pushNamed(context, '/records');
+                    }
                   },
                 ),
-                _DrawerMenuItem(
-                  icon: Icons.info,
-                  title: 'About',
+
+                const Divider(),
+
+                // About
+                ListTile(
+                  leading: const Icon(Icons.info, color: Colors.grey),
+                  title: const Text('About'),
+                  selected: widget.currentRoute == '/about',
+                  selectedTileColor: AppColors.accidentOrange.withOpacity(0.1),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AboutScreen()),
-                    );
+                    if (widget.currentRoute != '/about') {
+                      Navigator.pushNamed(context, '/about');
+                    }
                   },
                 ),
-                _DrawerMenuItem(
-                  icon: Icons.feedback,
-                  title: 'Feedback',
+
+                // Feedback
+                ListTile(
+                  leading: const Icon(Icons.feedback, color: Colors.grey),
+                  title: const Text('Feedback'),
+                  selected: widget.currentRoute == '/feedback',
+                  selectedTileColor: AppColors.secondaryGreen.withOpacity(0.1),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const FeedbackScreen()),
-                    );
+                    if (widget.currentRoute != '/feedback') {
+                      Navigator.pushNamed(context, '/feedback');
+                    }
                   },
                 ),
               ],
@@ -172,55 +197,34 @@ class _DrawerMenuState extends State<DrawerMenu> {
           ),
 
           // Footer
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                const Divider(),
-                const SizedBox(height: AppSpacing.sm),
                 Text(
-                  '${AppInfo.appName} v${AppInfo.version}',
-                  style: AppTextStyles.caption,
+                  'Designed by NexiVault',
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: 4),
                 Text(
-                  AppInfo.tagline,
-                  style: AppTextStyles.caption.copyWith(fontSize: 10),
+                  'Version 1.0.0',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 10,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
         ],
-      ),
-    );
-  }
-}
-
-class _DrawerMenuItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-
-  const _DrawerMenuItem({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primaryRed),
-      title: Text(
-        title,
-        style: AppTextStyles.body,
-      ),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.xs,
       ),
     );
   }

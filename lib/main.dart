@@ -1,145 +1,82 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/splash_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/registration_screen.dart';
+import 'screens/emergency_form_screen.dart';
+import 'screens/records_screen.dart';
+import 'screens/about_screen.dart';
+import 'screens/feedback_screen.dart';
 import 'utils/constants.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Set system UI overlay style (only for mobile)
-  if (!kIsWeb) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: AppColors.primaryRed,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
-      ),
-    );
-
-    // Set preferred orientations (only for mobile)
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-  }
-
-  runApp(const MyApp());
+  // Initialize Supabase asynchronously (don't block startup)
+  Supabase.initialize(
+    url: 'https://ssddnidpcjcbajxyhjgg.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzZGRuaWRwY2pjYmFqeHloamdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NTQ3MjksImV4cCI6MjA3OTAzMDcyOX0.UcAIUQB5cXnkX5Yc75qmcm_R8_-JdGB-qY6XrfiYbTU',
+  ).catchError((e) {
+    print('DEBUG: Supabase init error: $e');
+  });
+  
+  runApp(const MyApp()); // Don't wait for Supabase
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: AppInfo.appName,
+      title: 'EC Saver - Rescue 1122 Pakistan',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: AppColors.primaryRed,
-        scaffoldBackgroundColor: AppColors.backgroundWhite,
+        scaffoldBackgroundColor: Colors.white,
+        textTheme: GoogleFonts.poppinsTextTheme(),
+        appBarTheme: AppBarTheme(
+          backgroundColor: AppColors.primaryRed,
+          foregroundColor: Colors.white, // Add this - fixes all AppBar text/icons
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          titleTextStyle: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white, // Global fix for all ElevatedButtons
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primaryRed,
           primary: AppColors.primaryRed,
           secondary: AppColors.secondaryGreen,
-          error: AppColors.errorRed,
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.primaryRed,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          centerTitle: false,
-          systemOverlayStyle: SystemUiOverlayStyle.light,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryRed,
-            foregroundColor: Colors.white,
-            elevation: 4,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            textStyle: AppTextStyles.button,
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.textDark,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            side: const BorderSide(
-              color: AppColors.textLight,
-              width: 1.5,
-            ),
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          margin: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.cardBackground,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(
-              color: AppColors.primaryRed,
-              width: 2,
-            ),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(
-              color: AppColors.errorRed,
-              width: 2,
-            ),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(
-              color: AppColors.errorRed,
-              width: 2,
-            ),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.md,
-          ),
-        ),
-        textTheme: const TextTheme(
-          displayLarge: AppTextStyles.heading,
-          displayMedium: AppTextStyles.subheading,
-          bodyLarge: AppTextStyles.body,
-          bodyMedium: AppTextStyles.bodyLight,
-          bodySmall: AppTextStyles.caption,
-        ),
-        useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/registration': (context) => const RegistrationScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/add-emergency': (context) => const EmergencyFormScreen(),
+        '/records': (context) => const RecordsScreen(),
+        '/about': (context) => const AboutScreen(),
+        '/feedback': (context) => const FeedbackScreen(),
+      },
     );
   }
 }

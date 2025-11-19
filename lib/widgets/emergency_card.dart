@@ -4,331 +4,123 @@ import '../utils/constants.dart';
 
 class EmergencyCard extends StatelessWidget {
   final Emergency emergency;
+  final VoidCallback? onDelete;
 
   const EmergencyCard({
-    super.key,
+    Key? key,
     required this.emergency,
-  });
+    this.onDelete,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => _showDetails(context),
-      child: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border(
-            left: BorderSide(
-              color: EmergencyType.getColor(emergency.emergencyType),
-              width: 4,
-            ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              // Icon
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: EmergencyType.getColor(emergency.emergencyType).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  EmergencyType.getIcon(emergency.emergencyType),
-                  color: EmergencyType.getColor(emergency.emergencyType),
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-
-              // Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'EC-${emergency.ecNumber}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                        if (emergency.isLateEntry) ...[
-                          const SizedBox(width: AppSpacing.sm),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xs,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.errorRed.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Late',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.errorRed,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: AppColors.textLight,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          emergency.getFormattedDateTime(),
-                          style: AppTextStyles.caption,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      emergency.emergencyType,
-                      style: AppTextStyles.caption.copyWith(
-                        color: EmergencyType.getColor(emergency.emergencyType),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Arrow
-              const Icon(
-                Icons.chevron_right,
-                color: AppColors.textLight,
-              ),
-            ],
-          ),
-        ),
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  void _showDetails(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.textLight.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: EmergencyType.getColor(emergency.emergencyType).withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      EmergencyType.getIcon(emergency.emergencyType),
-                      color: EmergencyType.getColor(emergency.emergencyType),
-                      size: 36,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row
+            Row(
+              children: [
+                // EC Number
+                Expanded(
+                  child: Text(
+                    'EC #${emergency.ecNumber}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryRed,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'EC-${emergency.ecNumber}',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (emergency.isLateEntry) ...[
-                              const SizedBox(width: AppSpacing.sm),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.sm,
-                                  vertical: AppSpacing.xs,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.errorRed.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                                ),
-                                child: const Text(
-                                  'Late Entry',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.errorRed,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        Text(
-                          emergency.emergencyType,
-                          style: TextStyle(
-                            color: EmergencyType.getColor(emergency.emergencyType),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              const Divider(),
-              const SizedBox(height: AppSpacing.md),
-
-              // Details
-              _DetailRow(
-                icon: Icons.calendar_today,
-                label: 'Date',
-                value: emergency.getFormattedDate(),
-              ),
-              _DetailRow(
-                icon: Icons.access_time,
-                label: 'Time',
-                value: emergency.getFormattedTime(),
-              ),
-              if (emergency.location != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                _DetailRow(
-                  icon: Icons.location_on,
-                  label: 'Location',
-                  value: emergency.location!,
                 ),
-              ],
-              if (emergency.notes != null) ...[
-                const SizedBox(height: AppSpacing.lg),
-                const Text(
-                  'Notes',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
+                
+                // Date Badge
                 Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    color: AppColors.primaryRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    emergency.notes!,
-                    style: AppTextStyles.body,
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-
-              // Close Button
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: AppColors.textLight),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AppTextStyles.caption,
-                ),
-                Text(
-                  value,
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w600,
+                    emergency.getFormattedDate(),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryRed,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            
+            const SizedBox(height: 12),
+            
+            // Emergency Type
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.secondaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                emergency.emergencyType,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondaryGreen,
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Time
+            Row(
+              children: [
+                const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(
+                  emergency.getFormattedDateTime(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            
+            // Notes (if exists)
+            if (emergency.notes != null && emergency.notes!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                'Notes:',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                emergency.notes!,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black87,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

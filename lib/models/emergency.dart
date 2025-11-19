@@ -1,3 +1,4 @@
+import '../services/database_service.dart';
 import 'package:intl/intl.dart';
 
 class Emergency {
@@ -9,7 +10,7 @@ class Emergency {
   final String? notes;
   final bool isLateEntry;
   final DateTime createdAt;
-  final int createdBy;
+  final int? createdBy;
 
   Emergency({
     this.id,
@@ -20,17 +21,14 @@ class Emergency {
     this.notes,
     required this.isLateEntry,
     required this.createdAt,
-    required this.createdBy,
+    this.createdBy,
   });
-  
-  // Legacy compatibility - dateTime getter
-  DateTime get dateTime => emergencyDate;
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'ec_number': ecNumber,
-      'emergency_date': emergencyDate.toIso8601String().split('T')[0],
+      'emergency_date': emergencyDate.toIso8601String(),
       'emergency_type': emergencyType,
       'location': location,
       'notes': notes,
@@ -54,26 +52,19 @@ class Emergency {
     );
   }
 
-  // Helper method: Get formatted date-time string
-  String getFormattedDateTime() {
-    final formatter = DateFormat('dd-MMM-yyyy');
-    return formatter.format(emergencyDate);
-  }
-
-  // Helper method: Get formatted time string (shows only date now)
-  String getFormattedTime() {
-    final formatter = DateFormat('dd/MM/yyyy');
-    return formatter.format(emergencyDate);
-  }
-  
-  // Helper method: Get formatted date (for emergency card)
   String getFormattedDate() {
-    final formatter = DateFormat('dd-MMM-yyyy');
-    return formatter.format(emergencyDate);
+    return DateFormat('dd MMM yyyy').format(emergencyDate);
   }
 
-  // Helper method: Get month-year string
+  String getFormattedTime() {
+    return DateFormat('hh:mm a').format(emergencyDate);
+  }
+
+  String getFormattedDateTime() {
+    return DateFormat('dd MMM yyyy, hh:mm a').format(emergencyDate);
+  }
+
   String getMonthYear() {
-    return DateFormat('yyyy-MM').format(emergencyDate);
+    return DateFormat('MMMM yyyy').format(emergencyDate);
   }
 }
