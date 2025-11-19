@@ -1,88 +1,150 @@
 import 'package:flutter/material.dart';
+import '../services/update_service.dart';
 import '../utils/constants.dart';
 
-class UpdateDialog extends StatelessWidget {
-  final String version;
+class UpdateDialog extends StatefulWidget {
+  final String latestVersion;
+  final String downloadUrl;
   final String releaseNotes;
-  final String apkUrl;
-  final bool forceUpdate;
-  final String fileSize;
-  final VoidCallback onUpdatePressed;
 
   const UpdateDialog({
     Key? key,
-    required this.version,
+    required this.latestVersion,
+    required this.downloadUrl,
     required this.releaseNotes,
-    required this.apkUrl,
-    required this.forceUpdate,
-    required this.fileSize,
-    required this.onUpdatePressed,
   }) : super(key: key);
 
   @override
+  State<UpdateDialog> createState() => _UpdateDialogState();
+}
+
+class _UpdateDialogState extends State<UpdateDialog> {
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
+  String _statusText = 'Ready to download';
+
+  Future<void> _downloadUpdate() async {
+    setState(() {
+      _isDownloading = true;
+      _statusText = 'Downloading...';
+    });
+
+    try {
+      await UpdateService.downloadAndInstallUpdate(
+        widget.downloadUrl,
+        (progress) {
+          setState(() {
+            _downloadProgress = progress;
+            _statusText = 'Downloading... ${(progress * 100).toInt()}%';
+          });
+        },
+      );
+
+      setState(() {
+        _statusText = 'Installing... Please allow installation';
+      });
+    } catch (e) {
+      setState(() {
+        _isDownloading = false;
+        _statusText = 'Download failed: $e';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Update failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Icon(Icons.system_update, color: AppColors.primaryRed, size: 28),
-          const SizedBox(width: 12),
-          const Text('Update Available', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
+    return WillPopScope(
+      onWillPop: () async => false, // PREVENT BACK BUTTON
+      child: AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.system_update, color: AppColors.primaryRed),
+            SizedBox(width: 12),
+            Text('Update Required'),
+          ],
+        ),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Version $version is now available', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 16),
-            const Text('What\'s New:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primaryRed)),
-            const SizedBox(height: 8),
-            Text(releaseNotes, style: const TextStyle(fontSize: 14)),
+            Text(
+              'Version ${widget.latestVersion} is available',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-              child: Column(
-                children: [
-                  _buildInfoRow('Size', fileSize),
-                  const SizedBox(height: 8),
-                  _buildInfoRow('Version', version),
-                ],
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                widget.releaseNotes,
+                style: const TextStyle(fontSize: 13),
               ),
             ),
+            const SizedBox(height: 20),
+            if (_isDownloading) ...[
+              LinearProgressIndicator(
+                value: _downloadProgress,
+                backgroundColor: Colors.grey[300],
+                color: AppColors.primaryRed,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _statusText,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ] else ...[
+              const Text(
+                '⚠️ You must update to continue using the app',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ],
         ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isDownloading ? null : _downloadUpdate,
+              icon: _isDownloading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.download),
+              label: Text(_isDownloading ? 'Downloading...' : 'Update Now'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryRed,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
       ),
-      actions: [
-        if (!forceUpdate)
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Later', style: TextStyle(color: Colors.grey)),
-          ),
-        ElevatedButton(
-          onPressed: onUpdatePressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.secondaryGreen,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('UPDATE NOW', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-      ],
     );
   }
 }

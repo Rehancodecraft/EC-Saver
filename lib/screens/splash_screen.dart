@@ -4,6 +4,8 @@ import '../utils/constants.dart';
 import 'registration_screen.dart';
 import 'home_screen.dart';
 import '../services/database_service.dart';
+import '../services/update_service.dart';
+import '../widgets/update_dialog.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -34,13 +36,40 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _controller.forward();
-    _checkRegistrationStatus();
+    _checkForUpdates(); // Check updates first
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkForUpdates() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    try {
+      final updateInfo = await UpdateService.checkForUpdate();
+
+      if (updateInfo['updateAvailable'] == true && mounted) {
+        // SHOW FORCED UPDATE DIALOG
+        showDialog(
+          context: context,
+          barrierDismissible: false, // User CANNOT dismiss
+          builder: (context) => UpdateDialog(
+            latestVersion: updateInfo['latestVersion'],
+            downloadUrl: updateInfo['downloadUrl'],
+            releaseNotes: updateInfo['releaseNotes'],
+          ),
+        );
+        return; // STOP HERE - Don't proceed to app
+      }
+    } catch (e) {
+      print('DEBUG: Update check failed: $e');
+    }
+
+    // No update needed - proceed normally
+    _checkRegistrationStatus();
   }
 
   Future<void> _checkRegistrationStatus() async {

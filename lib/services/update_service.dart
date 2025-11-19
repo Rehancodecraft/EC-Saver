@@ -1,109 +1,114 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/services.dart';
+import 'package:open_file/open_file.dart';
 
 class UpdateService {
-  static const String versionUrl =
-      'https://raw.githubusercontent.com/Rehancodecraft/EC-Saver/main/version.json';
+  // REPLACE WITH YOUR GITHUB INFO
+  static const String githubOwner = 'YOUR_GITHUB_USERNAME';
+  static const String githubRepo = 'EC-Saver';
+  static const String githubApiUrl = 'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
-  static const MethodChannel _channel = MethodChannel('apk_installer');
-
-  static Future<Map<String, dynamic>?> checkForUpdates() async {
+  static Future<Map<String, dynamic>> checkForUpdate() async {
     try {
-      PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      String currentVersion = packageInfo.version;
+      // Get current app version
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
 
-      final response = await http.get(Uri.parse(versionUrl)).timeout(
-            const Duration(seconds: 10),
-          );
+      // Fetch latest release from GitHub
+      final response = await http.get(Uri.parse(githubApiUrl));
 
       if (response.statusCode == 200) {
-        Map<String, dynamic> versionData = json.decode(response.body);
-        String latestVersion = versionData['version'];
+        final data = json.decode(response.body);
+        final latestVersion = data['tag_name'].replaceAll('v', '');
+        final apkUrl = _getApkDownloadUrl(data['assets']);
+
+        print('DEBUG: Current version: $currentVersion');
+        print('DEBUG: Latest version: $latestVersion');
 
         if (_isUpdateAvailable(currentVersion, latestVersion)) {
-          return versionData;
+          return {
+            'updateAvailable': true,
+            'latestVersion': latestVersion,
+            'downloadUrl': apkUrl,
+            'releaseNotes': data['body'] ?? 'New update available',
+          };
         }
       }
-      return null;
+
+      return {'updateAvailable': false};
     } catch (e) {
-      print('Error checking updates: $e');
-      return null;
+      print('DEBUG: Update check error: $e');
+      return {'updateAvailable': false, 'error': e.toString()};
     }
+  }
+
+  static String _getApkDownloadUrl(List<dynamic> assets) {
+    for (var asset in assets) {
+      if (asset['name'].toString().endsWith('.apk')) {
+        return asset['browser_download_url'];
+      }
+    }
+    return '';
   }
 
   static bool _isUpdateAvailable(String current, String latest) {
-    try {
-      List<int> currentParts = current.split('.').map(int.parse).toList();
-      List<int> latestParts = latest.split('.').map(int.parse).toList();
+    final currentParts = current.split('.').map(int.parse).toList();
+    final latestParts = latest.split('.').map(int.parse).toList();
 
-      for (int i = 0; i < 3; i++) {
-        if (i >= currentParts.length || i >= latestParts.length) break;
-        if (latestParts[i] > currentParts[i]) return true;
-        if (latestParts[i] < currentParts[i]) return false;
-      }
-      return false;
-    } catch (e) {
-      return false;
+    for (int i = 0; i < 3; i++) {
+      if (latestParts[i] > currentParts[i]) return true;
+      if (latestParts[i] < currentParts[i]) return false;
     }
+    return false;
   }
 
-  static Future<bool> downloadAndInstallAPK(
-    String apkUrl,
-    Function(int received, int total)? onProgress,
+  static Future<void> downloadAndInstallUpdate(
+    String downloadUrl,
+    Function(double) onProgress,
   ) async {
     try {
-      if (Platform.isAndroid) {
-        var status = await Permission.storage.request();
-        if (!status.isGranted) {
-          status = await Permission.manageExternalStorage.request();
-          if (!status.isGranted) {
-            return false;
-          }
-        }
-
-        if (await Permission.requestInstallPackages.isDenied) {
-          await Permission.requestInstallPackages.request();
-        }
+      // Request storage permission
+      if (!await Permission.storage.request().isGranted) {
+        throw Exception('Storage permission denied');
       }
 
-      Directory? directory = await getExternalStorageDirectory();
-      String savePath = '${directory!.path}/emergency_cases_saver_update.apk';
+      // Get download directory
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/ec_saver_update.apk';
 
-      File file = File(savePath);
+      // Delete old APK if exists
+      final file = File(filePath);
       if (await file.exists()) {
         await file.delete();
       }
 
-      Dio dio = Dio();
-      await dio.download(
-        apkUrl,
-        savePath,
-        onReceiveProgress: (received, total) {
-          if (total != -1 && onProgress != null) {
-            onProgress(received, total);
-          }
-        },
-      );
+      // Download APK
+      final request = await HttpClient().getUrl(Uri.parse(downloadUrl));
+      final response = await request.close();
+      
+      final bytes = <int>[];
+      final totalBytes = response.contentLength;
+      var receivedBytes = 0;
 
-      // Use platform channel to install APK
-      if (Platform.isAndroid) {
-        try {
-          await _channel.invokeMethod('installApk', {'filePath': savePath});
-        } catch (e) {
-          print('Platform channel error: $e');
-        }
+      await for (var chunk in response) {
+        bytes.addAll(chunk);
+        receivedBytes += chunk.length;
+        onProgress(receivedBytes / totalBytes);
       }
 
-      return true;
+      // Write to file
+      await file.writeAsBytes(bytes);
+
+      // Install APK
+      await OpenFile.open(filePath);
     } catch (e) {
-      print('Error downloading/installing: $e');
-      return false;
+      print('DEBUG: Download error: $e');
+      rethrow;
     }
   }
 }
