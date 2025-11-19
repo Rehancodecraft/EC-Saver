@@ -1,0 +1,90 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.1, v1.0.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        
+    - name: Get dependencies
+      run: flutter pub get
+      
+    - name: Build APK
+      run: flutter build apk --release
+      
+    - name: Get version from pubspec
+      id: version
+      run: |
+        VERSION=$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Rescue 1122 App ${{ github.ref_name }}
+        body: |
+          ## What's New
+          Check the commit history for changes in this release.
+        draft: false
+        prerelease: false
+        
+    - name: Upload APK to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build/app/outputs/flutter-apk/app-release.apk
+        asset_name: rescue1122-${{ steps.version.outputs.VERSION }}.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Update version.json
+      run: |
+        VERSION=$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+        VERSION_CODE=$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 2)
+        REPO="${{ github.repository }}"
+        APK_URL="https://github.com/$REPO/releases/download/${{ github.ref_name }}/rescue1122-$VERSION.apk"
+        
+        cat > version.json << EOF
+        {
+          "version": "$VERSION",
+          "versionCode": $VERSION_CODE,
+          "apkUrl": "$APK_URL",
+          "releaseNotes": "Check GitHub releases for details",
+          "forceUpdate": true,
+          "minSupportedVersion": "1.0.0",
+          "updateTitle": "Critical Update Required",
+          "updateMessage": "A new version is available. Please update to continue."
+        }
+        EOF
+        
+    - name: Commit updated version.json
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add version.json
+        git commit -m "Auto-update version.json to ${{ steps.version.outputs.VERSION }}" || echo "No changes to commit"
+        git push origin HEAD:main || echo "Push failed, continuing..."
