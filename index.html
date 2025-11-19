@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rescue 1122 - Emergency Services App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: #D32F2F;
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .logo {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .tagline {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: #388E3C;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        .download-btn {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            background: #388E3C;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 30px;
+            transition: background 0.3s;
+        }
+        .download-btn:hover {
+            background: #2E7D32;
+        }
+        .version {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🚨</div>
+            <h1>Rescue 1122</h1>
+            <p class="tagline">Punjab Emergency Service App</p>
+        </div>
+        
+        <div class="content">
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <div>
+                    <strong>Easy Emergency Reporting</strong>
+                    <p>Quick access to report Medical, Fire, and Accident emergencies</p>
+                </div>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <div>
+                    <strong>Record Management</strong>
+                    <p>Track and manage emergency records offline</p>
+                </div>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🔄</div>
+                <div>
+                    <strong>Auto-Updates</strong>
+                    <p>Automatic updates to ensure you have the latest features</p>
+                </div>
+            </div>
+            
+            <a href="https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/app-release.apk" 
+               class="download-btn" 
+               id="downloadBtn">
+                📥 Download App (Latest Version)
+            </a>
+            
+            <p class="version">Powered by NexiVault Tech Solutions</p>
+        </div>
+    </div>
+
+    <script>
+        // Fetch latest version from version.json
+        fetch('https://raw.githubusercontent.com/Rehancodecraft/EC-Saver/main/version.json')
+            .then(response => response.json())
+            .then(data => {
+                const downloadBtn = document.getElementById('downloadBtn');
+                downloadBtn.href = data.apkUrl;
+                document.querySelector('.version').textContent = 
+                    `Version ${data.version} | Powered by NexiVault Tech Solutions`;
+            })
+            .catch(error => console.error('Error fetching version:', error));
+    </script>
+</body>
+</html>
+``
