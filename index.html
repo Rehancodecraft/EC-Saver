@@ -798,15 +798,11 @@
     </footer>
 
     <script>
+        // VERIFIED: Single download implementation
         let latestApkUrl = null;
         let latestApkName = 'ec-saver.apk';
         let latestVersion = 'v1.0.2';
         let isDownloading = false;
-
-        // Detect if user is on mobile device
-        function isMobileDevice() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        }
 
         async function fetchLatestRelease() {
             try {
@@ -851,98 +847,59 @@
             }
         }
 
-        // ALTERNATIVE: Convert GitHub URL to direct download
-        function getDirectDownloadUrl(githubUrl) {
-            // GitHub releases URL format:
-            // https://github.com/user/repo/releases/download/v1.0.2/file.apk
-            // This is already a direct download URL, but we ensure it's formatted correctly
-            
-            if (githubUrl && githubUrl.includes('github.com') && githubUrl.includes('/releases/download/')) {
-                console.log('✅ Direct download URL confirmed');
-                return githubUrl;
+        // FIXED: Mobile-friendly download (no redirect)
+        function initiateDownload() {
+            if (isDownloading) {
+                console.log('⚠️ Download already in progress');
+                return;
             }
             
-            // If it's a browser_download_url from API, it should work
-            return githubUrl;
-        }
+            if (!latestApkUrl) {
+                console.error('❌ No download URL available');
+                alert('Download link not ready. Please try again.');
+                return;
+            }
 
-        // Enhanced download function
-        function initiateDownload() {ApkUrl);
-            if (isDownloading) return;
-            if (!latestApkUrl) {entById('downloadOverlay');
-                alert('Download link not ready. Please try again.');ntById('downloadStatus');
-                return; = document.getElementById('androidDownload');
-            }
-'active');
             isDownloading = true;
-            const isMobile = isMobileDevice();extContent = `Downloading ${latestApkName}...`;
-            const directUrl = getDirectDownloadUrl(latestApkUrl);
+            console.log('🚀 Starting download from:', latestApkUrl);
             
-            console.log('🚀 Download initiated');if (isMobile) {
-            console.log('📱 Mobile:', isMobile);ect navigation with proper headers
-            console.log('🔗 URL:', directUrl);hod');
+            const overlay = document.getElementById('downloadOverlay');
+            const statusText = document.getElementById('downloadStatus');
+            const downloadBtn = document.getElementById('androidDownload');
             
-            const overlay = document.getElementById('downloadOverlay');ST download request (bypasses redirect)
-            const statusText = document.getElementById('downloadStatus'); form = document.createElement('form');
-            const downloadBtn = document.getElementById('androidDownload');form.method = 'GET';
-                       form.action = latestApkUrl;
-            overlay.classList.add('active');                    form.style.display = 'none';
-            downloadBtn.disabled = true;appendChild(form);
-            statusText.textContent = isMobile ? 'Starting download...' : `Downloading ${latestApkName}...`;
+            overlay.classList.add('active');
+            downloadBtn.disabled = true;
+            statusText.textContent = `Downloading ${latestApkName}...`;
             
-            setTimeout(() => {;
-                // Universal method: Create invisible iframe         
-                const iframe = document.createElement('iframe');                    // Alternative: Direct window.location for mobile
-                iframe.style.display = 'none';imeout(() => {
-                iframe.style.visibility = 'hidden';
-                iframe.style.width = '0';
-                iframe.style.height = '0';
-                iframe.src = directUrl;
-                document.body.appendChild(iframe);t(() => {
-                
-                console.log('✅ Download triggered via iframe');   }, 500);
-                     
-                // Cleanup iframe         console.log('✅ Mobile download triggered');
-                setTimeout(() => {       
-                    if (iframe.parentNode) {         } else {
-                        document.body.removeChild(iframe);             // Desktop: Use link click method
-                    }                    console.log('💻 Desktop download method');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-</html></body>    </script>        });            });                }                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });                if (target) {                const target = document.querySelector(this.getAttribute('href'));                e.preventDefault();            anchor.addEventListener('click', function (e) {        document.querySelectorAll('a[href^="#"]').forEach(anchor => {        // Smooth scroll        });            fetchLatestRelease();            console.log('🌐 Page loaded');        window.addEventListener('DOMContentLoaded', () => {        // Initialize on page load        }            }, 300);                                }, isMobile ? 3000 : 2000);                    isDownloading = false;                    downloadBtn.disabled = false;                    overlay.classList.remove('active');                setTimeout(() => {                                    : 'Download started! Check your downloads folder.';                    ? 'Download started! Check notification bar.'                 statusText.textContent = isMobile                                 }, 3000);                    
+            // Detect if mobile
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            console.log('📱 Is Mobile:', isMobile);
+            
+            setTimeout(() => {
+                if (isMobile) {
+                    // MOBILE: Use location.href to trigger download (prevents redirect)
+                    console.log('📱 Using mobile download method');
+                    
+                    // Create hidden iframe to prevent navigation
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.style.width = '0';
+                    iframe.style.height = '0';
+                    document.body.appendChild(iframe);
+                    
+                    // Set iframe source to APK URL
+                    iframe.src = latestApkUrl;
+                    
+                    console.log('✅ Download triggered (mobile)');
+                    
+                    // Clean up iframe after delay
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 3000);
+                    
+                } else {
+                    // DESKTOP: Use link.click() method
+                    console.log('🖥️ Using desktop download method');
                     const link = document.createElement('a');
                     link.href = latestApkUrl;
                     link.download = latestApkName;
@@ -954,7 +911,7 @@
                         document.body.removeChild(link);
                     }, 100);
                     
-                    console.log('✅ Desktop download triggered');
+                    console.log('✅ Download triggered (desktop)');
                 }
                 
                 statusText.textContent = 'Download started! Check your downloads folder.';
