@@ -31,25 +31,56 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
-      // ✅ VERIFIED: Downloads APK in-app with progress
       await UpdateService.downloadAndInstallUpdate(widget.downloadUrl, (p) {
-        setState(() {
-          _progress = p.clamp(0.0, 1.0);
-          _status = 'Downloading ${(p * 100).toInt()}%';
-        });
+        if (mounted) {
+          setState(() {
+            _progress = p.clamp(0.0, 1.0);
+            if (p >= 1.0) {
+              _status = 'Download complete. Opening installer...';
+            } else {
+              _status = 'Downloading ${(p * 100).toInt()}%';
+            }
+          });
+        }
       });
 
-      setState(() {
-        _status = 'Download complete. Opening installer...';
-      });
-    } catch (e) {
-      setState(() {
-        _isDownloading = false;
-        _status = 'Download failed: $e';
-      });
+      // Download and install successful
       if (mounted) {
+        setState(() {
+          _status = 'Please install the update';
+          _isDownloading = false;
+        });
+
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('✓ Download complete! Please install the update.'),
+            backgroundColor: AppColors.secondaryGreen,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // Auto-close dialog after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        });
+      }
+    } catch (e) {
+      print('DEBUG: Download error: $e');
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _status = 'Download failed';
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }

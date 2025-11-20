@@ -100,10 +100,16 @@ class UpdateService {
       throw Exception('Empty download URL');
     }
 
-    // Request storage permission on Android
+    // Request install permission (Android 8+)
     if (Platform.isAndroid) {
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
+      final installStatus = await Permission.requestInstallPackages.request();
+      if (!installStatus.isGranted) {
+        throw Exception('Install permission denied. Please enable "Install unknown apps" in Settings.');
+      }
+
+      // Request storage permission
+      final storageStatus = await Permission.storage.request();
+      if (!storageStatus.isGranted) {
         throw Exception('Storage permission denied');
       }
     }
@@ -122,19 +128,27 @@ class UpdateService {
     final bytes = <int>[];
     int received = 0;
 
-    // Determine file path (external storage preferred)
+    // Use external storage directory for Android
     Directory dir;
     if (Platform.isAndroid) {
-      dir = (await getExternalStorageDirectory()) ?? await getApplicationDocumentsDirectory();
+      // Use Downloads directory for better compatibility
+      dir = Directory('/storage/emulated/0/Download');
+      if (!await dir.exists()) {
+        dir = (await getExternalStorageDirectory()) ?? await getApplicationDocumentsDirectory();
+      }
     } else {
       dir = await getApplicationDocumentsDirectory();
     }
 
     final filePath = '${dir.path}/ec_saver_update.apk';
     final file = File(filePath);
+    
+    // Delete old file if exists
     if (await file.exists()) {
       await file.delete();
     }
+
+    print('DEBUG: Downloading to: $filePath');
 
     final sink = file.openWrite();
     try {
@@ -153,15 +167,32 @@ class UpdateService {
     }
 
     // Ensure file is written
-    if (!await file.exists() || await file.length() == 0) {
+    if (!await file.exists()) {
+      throw Exception('Downloaded file not found');
+    }
+
+    final fileSize = await file.length();
+    if (fileSize == 0) {
       throw Exception('Downloaded file is empty');
     }
 
-    // Open the file with system installer (no browser redirect)
-    final result = await OpenFile.open(file.path);
-    if (result.type != ResultType.done) {
-      // still return; system installer should handle
-      // throw Exception('Failed to open installer: ${result.message}');
+    print('DEBUG: Download complete. File size: $fileSize bytes');
+    print('DEBUG: Opening installer for: $filePath');
+
+    // IMPORTANT: Add delay before opening installer
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Open the APK file with system installer
+    final result = await OpenFile.open(
+      filePath,
+      type: 'application/vnd.android.package-archive',
+      uti: 'public.android-package-archive',
+    );
+
+    print('DEBUG: OpenFile result: ${result.type} - ${result.message}');
+
+    if (result.type != ResultType.done && result.type != ResultType.fileNotFound) {
+      throw Exception('Failed to open installer: ${result.message}');
     }
   }
 }
