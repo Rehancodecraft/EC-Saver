@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import '../services/update_service.dart';
@@ -45,15 +47,31 @@ class _UpdateDialogState extends State<UpdateDialog> {
         }
       });
 
-      await Future.delayed(const Duration(seconds: 1));
+      // small delay to let OpenFile/open installer trigger
+      await Future.delayed(const Duration(milliseconds: 800));
+
       if (mounted) {
+        // Inform user then exit app so installer can replace app cleanly
         setState(() {
           _isDownloading = false;
-          _status = 'Installer opened. If not, check your Downloads folder and install manually.';
+          _status = 'Installer opened. The app will close so installation can proceed.';
         });
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) Navigator.of(context).pop();
-        });
+
+        // Give user a moment to read status
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Close dialog if open
+        if (mounted) Navigator.of(context).pop();
+
+        // Gracefully exit the app so installer can run and new app can be started.
+        // On Android SystemNavigator.pop() will move app to background; exit(0) ensures process ends.
+        try {
+          SystemNavigator.pop();
+        } catch (_) {}
+        // Fallback to ensure process terminates
+        try {
+          exit(0);
+        } catch (_) {}
       }
     } catch (e) {
       if (mounted) {
@@ -88,12 +106,26 @@ class _UpdateDialogState extends State<UpdateDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Version ${widget.latestVersion} is available', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Version ${widget.latestVersion} is available',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-              child: Text(widget.releaseNotes, maxLines: 6, overflow: TextOverflow.ellipsis),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                widget.releaseNotes,
+                style: const TextStyle(fontSize: 13),
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(height: 16),
             if (_isDownloading) ...[
@@ -101,8 +133,15 @@ class _UpdateDialogState extends State<UpdateDialog> {
               const SizedBox(height: 8),
               Text(_status),
             ] else ...[
-              const Text('You must update to continue using the app.'),
-            ]
+              Text(
+                '⚠️ You must update to continue using the app',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ],
         ),
         actions: [
@@ -110,9 +149,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: _isDownloading ? null : _startDownload,
-              icon: _isDownloading ? const SizedBox(width:16, height:16, child:CircularProgressIndicator(color:Colors.white, strokeWidth:2)) : const Icon(Icons.download),
+              icon: _isDownloading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.download),
               label: Text(_isDownloading ? 'Downloading...' : 'Download & Install'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryRed),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryRed,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
           ),
         ],
