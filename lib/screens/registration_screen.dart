@@ -247,7 +247,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Welcome to Rescue 1122',
+                        'Welcome to Emergency Cases Saver',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
