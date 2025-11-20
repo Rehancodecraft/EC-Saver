@@ -554,7 +554,7 @@
                 <div class="stat-label">Free & Private</div>
             </div>
             <div class="stat-item">
-                <div class="stat-number" id="version">v1.0.1</div>
+                <div class="stat-number" id="version">v1.0.2</div>
                 <div class="stat-label">Latest Version</div>
             </div>
         </div>
@@ -635,11 +635,11 @@
             <p>Download EC Saver now and start managing emergency cases professionally</p>
             
             <div class="version-info">
-                <span class="version-badge" id="currentVersion">Latest Version: v1.0.1</span>
+                <span class="version-badge" id="currentVersion">Latest Version: Loading...</span>
             </div>
 
             <div class="download-platforms">
-                <a href="https://github.com/Rehancodecraft/EC-Saver/releases/latest/download/ec-saver.apk" 
+                <a href="https://github.com/Rehancodecraft/EC-Saver/releases/latest" 
                    class="platform-btn" 
                    id="androidDownload">
                     <span class="platform-icon">🤖</span>
@@ -693,25 +693,65 @@
     </footer>
 
     <script>
-        // Fetch latest version from GitHub API
-        fetch('https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest')
-            .then(response => response.json())
-            .then(data => {
-                const version = data.tag_name || 'v1.0.1';
-                const apkAsset = data.assets.find(asset => asset.name.endsWith('.apk'));
+        // Fetch latest version from GitHub API with better error handling
+        async function fetchLatestRelease() {
+            try {
+                console.log('Fetching latest release from GitHub...');
+                const response = await fetch('https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Release data:', data);
+                
+                const version = data.tag_name || 'v1.0.2';
+                const apkAssets = data.assets.filter(asset => asset.name.endsWith('.apk'));
+                
+                console.log('Found APK assets:', apkAssets);
                 
                 // Update version displays
                 document.getElementById('version').textContent = version;
                 document.getElementById('currentVersion').textContent = `Latest Version: ${version}`;
                 
-                // Update download link if APK found
-                if (apkAsset) {
-                    document.getElementById('androidDownload').href = apkAsset.browser_download_url;
+                // Find the correct APK
+                let apkUrl = null;
+                
+                // Try to find versioned APK first (ec-saver-vX.X.X.apk)
+                const versionedApk = apkAssets.find(asset => 
+                    asset.name.includes(version.replace('v', ''))
+                );
+                
+                if (versionedApk) {
+                    apkUrl = versionedApk.browser_download_url;
+                } else if (apkAssets.length > 0) {
+                    // Fallback to first APK found
+                    apkUrl = apkAssets[0].browser_download_url;
                 }
-            })
-            .catch(error => {
-                console.log('Using default version info');
-            });
+                
+                console.log('APK download URL:', apkUrl);
+                
+                // Update download button
+                if (apkUrl) {
+                    document.getElementById('androidDownload').href = apkUrl;
+                    console.log('✅ Download link updated');
+                } else {
+                    console.warn('⚠️ No APK found, using releases page');
+                    document.getElementById('androidDownload').href = `https://github.com/Rehancodecraft/EC-Saver/releases/latest`;
+                }
+                
+            } catch (error) {
+                console.error('Error fetching release:', error);
+                // Fallback to releases page
+                document.getElementById('version').textContent = 'v1.0.2';
+                document.getElementById('currentVersion').textContent = 'Latest Version: v1.0.2';
+                document.getElementById('androidDownload').href = 'https://github.com/Rehancodecraft/EC-Saver/releases/latest';
+            }
+        }
+
+        // Call on page load
+        fetchLatestRelease();
 
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

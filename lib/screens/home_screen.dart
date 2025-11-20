@@ -1,183 +1,75 @@
 import 'package:flutter/material.dart';
-import '../services/database_service.dart';
-import '../services/update_service.dart';
-import '../widgets/update_dialog.dart';
-import '../widgets/download_progress_dialog.dart';
-import '../widgets/drawer_menu.dart';
-import '../utils/constants.dart';
 import '../models/user_profile.dart';
-import '../models/emergency.dart';
-import 'emergency_form_screen.dart';
+import '../services/database_service.dart';
+import '../utils/constants.dart';
+import '../widgets/drawer_menu.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final DatabaseService _databaseService = DatabaseService();
-  UserProfile? _userProfile;
+  int _todayCount = 0;
   int _monthlyCount = 0;
-  int _todayCount = 0; // Add this line
-  Emergency? _lastEmergency;
   bool _isLoading = true;
+  UserProfile? _userProfile;
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
     _loadMonthlyStats();
-    _checkForUpdates(); // Keep this
-  }
-
-  Future<void> _loadMonthlyStats() async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    
-    final emergencies = await _databaseService.getEmergencies();
-    
-    // Count today's cases
-    final todayCases = emergencies.where((e) {
-      final emergencyDay = DateTime(
-        e.emergencyDate.year,
-        e.emergencyDate.month,
-        e.emergencyDate.day,
-      );
-      return emergencyDay.isAtSameMomentAs(today);
-    }).length;
-    
-    // Count this month's cases
-    final monthStart = DateTime(now.year, now.month, 1);
-    final monthlyEmergencies = emergencies.where((e) {
-      return DateTime(
-        e.emergencyDate.year,
-        e.emergencyDate.month,
-        e.emergencyDate.day,
-      ).isAfter(monthStart.subtract(const Duration(days: 1)));
-    }).toList();
-
-    setState(() {
-      _todayCount = todayCases;
-      _monthlyCount = monthlyEmergencies.length;
-      if (monthlyEmergencies.isNotEmpty) {
-        _lastEmergency = monthlyEmergencies.first;
-      }
-    });
   }
 
   Future<void> _loadUserProfile() async {
-    setState(() => _isLoading = true);
+    final profile = await DatabaseService().getUserProfile();
+    setState(() {
+      _userProfile = profile;
+    });
+  }
+
+  Future<void> _loadMonthlyStats() async {
     try {
-      final userProfile = await _databaseService.getUserProfile();
+      final dbService = DatabaseService();
+      
+      // Get today's date range
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      
+      // Get this month's date range
+      final monthStart = DateTime(now.year, now.month, 1);
+      final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+      
+      // Get all emergencies
+      final allEmergencies = await dbService.getAllEmergencies();
+      
+      // Count today's emergencies
+      final todayEmergencies = allEmergencies.where((e) =>
+        e.emergencyDate.isAfter(todayStart) && e.emergencyDate.isBefore(todayEnd)
+      ).length;
+      
+      // Count this month's emergencies
+      final monthlyEmergencies = allEmergencies.where((e) =>
+        e.emergencyDate.isAfter(monthStart) && e.emergencyDate.isBefore(monthEnd)
+      ).length;
+      
       setState(() {
-        _userProfile = userProfile;
+        _todayCount = todayEmergencies;
+        _monthlyCount = monthlyEmergencies;
+        _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading user profile: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      print('DEBUG: Error loading stats: $e');
+      setState(() {
+        _todayCount = 0;
+        _monthlyCount = 0;
+        _isLoading = false;
+      });
     }
-  }
-
-  Future<void> _checkForUpdates() async {
-    try {
-      final updateInfo = await UpdateService.checkForUpdate(); // Fixed method name
-      
-      if (updateInfo['updateAvailable'] == true) {
-        if (mounted) {
-          // Show custom dialog with manual download option
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              title: const Row(
-                children: [
-                  Icon(Icons.system_update, color: AppColors.primaryRed),
-                  SizedBox(width: 12),
-                  Text('Update Available'),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Version ${updateInfo['latestVersion']}', // Fixed: version → latestVersion
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(updateInfo['releaseNotes'] ?? 'New update available'),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '⚠️ Please update to continue',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _downloadAndInstall(updateInfo['downloadUrl']);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryRed,
-                  ),
-                  child: const Text('Update Now'),
-                ),
-              ],
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('DEBUG: Update check error: $e');
-    }
-  }
-
-  Future<void> _downloadAndInstall(String apkUrl) async {
-    // Show progress dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          double progress = 0.0;
-          
-          // Start download
-          UpdateService.downloadAndInstallUpdate( // Fixed method name
-            apkUrl,
-            (downloadProgress) {
-              setState(() {
-                progress = downloadProgress;
-              });
-            },
-          );
-
-          return AlertDialog(
-            title: const Text('Downloading Update'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                LinearProgressIndicator(value: progress),
-                const SizedBox(height: 16),
-                Text('${(progress * 100).toInt()}%'),
-              ],
-            ),
-          );
-        },
-      ),
-    );
   }
 
   @override

@@ -36,7 +36,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _controller.forward();
-    _checkForUpdates(); // Check updates first
+    _checkForUpdatesAndProceed();
   }
 
   @override
@@ -45,13 +45,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  Future<void> _checkForUpdates() async {
+  Future<void> _checkForUpdatesAndProceed() async {
     await Future.delayed(const Duration(milliseconds: 1500));
 
     try {
+      print('DEBUG: Checking for updates on splash...');
       final updateInfo = await UpdateService.checkForUpdate();
 
       if (updateInfo['updateAvailable'] == true && mounted) {
+        print('DEBUG: Update available, showing dialog');
         // SHOW FORCED UPDATE DIALOG
         showDialog(
           context: context,
