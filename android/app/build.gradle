@@ -19,7 +19,7 @@ if (flutterVersionCode == null) {
 
 def flutterVersionName = localProperties.getProperty('flutter.versionName')
 if (flutterVersionName == null) {
-    flutterVersionName = '1.0.0'
+    flutterVersionName = '1.0'
 }
 
 android {
@@ -41,11 +41,17 @@ android {
 
     defaultConfig {
         applicationId "com.nexivault.emergency_cases_saver"
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion flutter.minSdkVersion  // Changed from flutter.minSdkVersion
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            outputFileName = "ec-saver-v${flutterVersionName}-${variant.buildType.name}.apk"
+        }
     }
 
     buildTypes {
