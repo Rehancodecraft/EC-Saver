@@ -20,48 +20,38 @@ class UpdateDialog extends StatefulWidget {
 
 class _UpdateDialogState extends State<UpdateDialog> {
   bool _isDownloading = false;
-  double _downloadProgress = 0.0;
-  String _statusText = 'Ready to download';
 
   Future<void> _downloadUpdate() async {
-    setState(() {
-      _isDownloading = true;
-      _statusText = 'Downloading...';
-    });
+    setState(() => _isDownloading = true);
 
     try {
-      await UpdateService.downloadAndInstallUpdate(
-        widget.downloadUrl,
-        (progress) {
-          setState(() {
-            _downloadProgress = progress;
-            _statusText = 'Downloading... ${(progress * 100).toInt()}%';
-          });
-        },
-      );
+      await UpdateService.downloadUpdate(widget.downloadUrl);
 
-      setState(() {
-        _statusText = 'Installing... Please allow installation';
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Opening browser to download APK...'),
+            backgroundColor: AppColors.secondaryGreen,
+          ),
+        );
+      }
     } catch (e) {
-      setState(() {
-        _isDownloading = false;
-        _statusText = 'Download failed: $e';
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Update failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        setState(() => _isDownloading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // PREVENT BACK BUTTON
+      onWillPop: () async => false,
       child: AlertDialog(
         title: const Row(
           children: [
@@ -91,33 +81,19 @@ class _UpdateDialogState extends State<UpdateDialog> {
               child: Text(
                 widget.releaseNotes,
                 style: const TextStyle(fontSize: 13),
+                maxLines: 5,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 20),
-            if (_isDownloading) ...[
-              LinearProgressIndicator(
-                value: _downloadProgress,
-                backgroundColor: Colors.grey[300],
-                color: AppColors.primaryRed,
+            const SizedBox(height: 16),
+            const Text(
+              '⚠️ You must update to continue using the app',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 8),
-              Text(
-                _statusText,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                ),
-              ),
-            ] else ...[
-              const Text(
-                '⚠️ You must update to continue using the app',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+            ),
           ],
         ),
         actions: [
@@ -135,7 +111,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       ),
                     )
                   : const Icon(Icons.download),
-              label: Text(_isDownloading ? 'Downloading...' : 'Update Now'),
+              label: Text(_isDownloading ? 'Opening...' : 'Download Update'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryRed,
                 foregroundColor: Colors.white,

@@ -1,7 +1,7 @@
 name: emergency_cases_saver
 description: EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan
 
-version: 1.0.2+3 # Increment version (was 1.0.1+2)
+version: 1.0.2+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -30,12 +30,11 @@ dependencies:
   # Supabase
   supabase_flutter: ^2.10.3
   
-  # Update system
+  # Update system (SIMPLIFIED)
   package_info_plus: ^4.2.0
   http: ^1.1.0
-  dio: ^5.3.3
   permission_handler: ^11.4.0
-  open_file: ^3.3.2
+  # Removed: dio, open_file (causing conflicts)
 
 dev_dependencies:
   flutter_test:

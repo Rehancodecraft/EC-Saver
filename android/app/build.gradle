@@ -23,25 +23,29 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace = "com.nexivault.emergency_cases_saver"
-    compileSdk = 34
-    ndkVersion = "27.1.12297006"
+    namespace "com.nexivault.emergency_cases_saver"
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
     }
 
     defaultConfig {
-        applicationId = "com.nexivault.emergency_cases_saver"
-        minSdkVersion = flutter.minSdkVersion
-        targetSdk = 34
-        versionCode = flutterVersionCode.toInteger()  // Fixed: use flutterVersionCode
-        versionName = flutterVersionName              // Fixed: use flutterVersionName
+        applicationId "com.nexivault.emergency_cases_saver"
+        minSdk flutter.minSdkVersion
+        targetSdk flutter.targetSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
         multiDexEnabled true
     }
 

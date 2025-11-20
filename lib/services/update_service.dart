@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:open_file/open_file.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UpdateService {
   // UPDATE WITH YOUR ACTUAL GITHUB INFO
@@ -80,48 +79,13 @@ class UpdateService {
     return false;
   }
 
-  static Future<void> downloadAndInstallUpdate(
-    String downloadUrl,
-    Function(double) onProgress,
-  ) async {
-    try {
-      // Request storage permission
-      if (!await Permission.storage.request().isGranted) {
-        throw Exception('Storage permission denied');
-      }
-
-      // Get download directory
-      final dir = await getExternalStorageDirectory();
-      final filePath = '${dir!.path}/ec_saver_update.apk';
-
-      // Delete old APK if exists
-      final file = File(filePath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-
-      // Download APK
-      final request = await HttpClient().getUrl(Uri.parse(downloadUrl));
-      final response = await request.close();
-      
-      final bytes = <int>[];
-      final totalBytes = response.contentLength;
-      var receivedBytes = 0;
-
-      await for (var chunk in response) {
-        bytes.addAll(chunk);
-        receivedBytes += chunk.length;
-        onProgress(receivedBytes / totalBytes);
-      }
-
-      // Write to file
-      await file.writeAsBytes(bytes);
-
-      // Install APK
-      await OpenFile.open(filePath);
-    } catch (e) {
-      print('DEBUG: Download error: $e');
-      rethrow;
+  // Simplified: Just open browser to download
+  static Future<void> downloadUpdate(String downloadUrl) async {
+    final Uri url = Uri.parse(downloadUrl);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      throw Exception('Could not open download link');
     }
   }
 }
