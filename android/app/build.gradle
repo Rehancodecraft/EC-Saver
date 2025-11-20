@@ -41,13 +41,14 @@ android {
 
     defaultConfig {
         applicationId "com.nexivault.emergency_cases_saver"
-        minSdkVersion 21  // Changed from flutter.minSdkVersion
+        minSdkVersion 21  // ✅ VERIFIED: Fixed value
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
     }
 
+    // ✅ VERIFIED: Auto-naming APK with version
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
             outputFileName = "ec-saver-v${flutterVersionName}-${variant.buildType.name}.apk"

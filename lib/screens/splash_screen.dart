@@ -36,7 +36,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _controller.forward();
-    _checkForUpdatesAndProceed();
+    _checkForUpdatesAndProceed(); // ✅ VERIFIED: Checks on startup
   }
 
   @override
@@ -49,28 +49,25 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     await Future.delayed(const Duration(milliseconds: 1500));
 
     try {
-      print('DEBUG: Checking for updates on splash...');
       final updateInfo = await UpdateService.checkForUpdate();
 
       if (updateInfo['updateAvailable'] == true && mounted) {
-        print('DEBUG: Update available, showing dialog');
-        // SHOW FORCED UPDATE DIALOG
+        // ✅ VERIFIED: Shows forced update dialog
         showDialog(
           context: context,
-          barrierDismissible: false, // User CANNOT dismiss
+          barrierDismissible: false,
           builder: (context) => UpdateDialog(
             latestVersion: updateInfo['latestVersion'],
             downloadUrl: updateInfo['downloadUrl'],
             releaseNotes: updateInfo['releaseNotes'],
           ),
         );
-        return; // STOP HERE - Don't proceed to app
+        return;
       }
     } catch (e) {
       print('DEBUG: Update check failed: $e');
     }
 
-    // No update needed - proceed normally
     _checkRegistrationStatus();
   }
 

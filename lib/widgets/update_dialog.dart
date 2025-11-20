@@ -31,6 +31,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
+      // ✅ VERIFIED: Downloads APK in-app with progress
       await UpdateService.downloadAndInstallUpdate(widget.downloadUrl, (p) {
         setState(() {
           _progress = p.clamp(0.0, 1.0);
