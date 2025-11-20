@@ -12,6 +12,7 @@
     <meta property="og:title" content="EC Saver - Emergency Cases Saver">
     <meta property="og:description" content="Professional emergency management app for Rescue 1122 Pakistan">
     <meta property="og:type" content="website">
+    <meta property="og:image" content="https://rehancodecraft.github.io/EC-Saver/assets/image/logo.png">
     
     <style>
         * {
@@ -27,10 +28,13 @@
             --text-dark: #212121;
             --text-light: #757575;
             --bg-light: #FAFAFA;
+            --shadow-sm: 0 2px 10px rgba(0,0,0,0.1);
+            --shadow-md: 0 5px 25px rgba(0,0,0,0.15);
+            --shadow-lg: 0 15px 40px rgba(0,0,0,0.2);
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             color: var(--text-dark);
             line-height: 1.6;
             overflow-x: hidden;
@@ -39,7 +43,8 @@
         /* Navigation */
         .navbar {
             background: rgba(255, 255, 255, 0.98);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-sm);
             padding: 15px 0;
             position: sticky;
             top: 0;
@@ -64,10 +69,11 @@
             color: var(--primary-red);
         }
 
-        .nav-logo svg {
-            width: 40px;
-            height: 40px;
-            fill: var(--primary-red);
+        .nav-logo img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
 
         .nav-links {
@@ -87,11 +93,11 @@
             color: var(--primary-red);
         }
 
-        /* Hero Section */
+        /* Hero Section - Enhanced */
         .hero {
             background: linear-gradient(135deg, var(--primary-red) 0%, var(--dark-red) 100%);
             color: white;
-            padding: 100px 20px 80px;
+            padding: 120px 20px 100px;
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -104,8 +110,15 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="rgba(255,255,255,0.05)" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,138.7C960,139,1056,117,1152,106.7C1248,96,1344,96,1392,96L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
-            background-size: cover;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+            animation: shimmer 15s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
         }
 
         .hero-content {
@@ -116,43 +129,70 @@
         }
 
         .app-icon {
-            width: 140px;
-            height: 140px;
+            width: 160px;
+            height: 160px;
             margin: 0 auto 30px;
             background: white;
-            border-radius: 30px;
-            padding: 25px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            border-radius: 35px;
+            padding: 20px;
+            box-shadow: 
+                0 20px 60px rgba(0,0,0,0.3),
+                0 0 0 8px rgba(255,255,255,0.1),
+                0 0 0 16px rgba(255,255,255,0.05);
             display: flex;
             align-items: center;
             justify-content: center;
+            animation: float 6s ease-in-out infinite;
         }
 
-        .app-icon svg {
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .app-icon img {
             width: 100%;
             height: 100%;
-            fill: var(--primary-red);
+            object-fit: contain;
         }
 
         .hero h1 {
-            font-size: 4rem;
-            font-weight: 800;
+            font-size: 4.5rem;
+            font-weight: 900;
             margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-            letter-spacing: -1px;
+            text-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+            letter-spacing: -2px;
+            background: linear-gradient(to right, #ffffff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .hero .subtitle {
-            font-size: 1.8rem;
+            font-size: 2rem;
             margin-bottom: 15px;
             opacity: 0.95;
-            font-weight: 300;
+            font-weight: 400;
+            letter-spacing: 1px;
         }
 
         .hero .tagline {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             opacity: 0.9;
             margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .official-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 10px 25px;
+            border-radius: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-size: 0.95rem;
+            font-weight: 500;
         }
 
         .hero-buttons {
@@ -198,11 +238,22 @@
             background: rgba(255,255,255,0.1);
         }
 
-        /* Stats Section */
+        /* Stats Section - Enhanced */
         .stats {
             background: white;
-            padding: 60px 20px;
+            padding: 80px 20px;
             text-align: center;
+            position: relative;
+        }
+
+        .stats::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(to bottom, var(--bg-light), white);
         }
 
         .stats-grid {
@@ -210,17 +261,31 @@
             margin: 0 auto;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 40px;
+            gap: 50px;
+            position: relative;
+            z-index: 1;
         }
 
         .stat-item {
-            padding: 20px;
+            padding: 30px 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
         }
 
         .stat-number {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--primary-red);
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary-red), var(--dark-red));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 10px;
         }
 
@@ -229,23 +294,29 @@
             font-size: 1.1rem;
         }
 
-        /* Features Section */
+        /* Features Section - Enhanced */
         .features {
-            padding: 100px 20px;
-            background: var(--bg-light);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            padding: 120px 20px;
+            background: linear-gradient(to bottom, white, var(--bg-light));
         }
 
         .section-title {
             text-align: center;
-            font-size: 3rem;
-            margin-bottom: 60px;
+            font-size: 3.5rem;
+            margin-bottom: 20px;
             color: var(--text-dark);
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 60px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .features-grid {
@@ -256,33 +327,36 @@
 
         .feature-card {
             background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
+            padding: 45px;
+            border-radius: 25px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             text-align: center;
+            border: 1px solid rgba(0,0,0,0.05);
         }
 
         .feature-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-red);
         }
 
         .feature-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 25px;
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 30px;
             background: linear-gradient(135deg, var(--primary-red), var(--dark-red));
-            border-radius: 20px;
+            border-radius: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 10px 30px rgba(211, 47, 47, 0.3);
+            transition: all 0.3s ease;
         }
 
-        .feature-icon svg {
-            width: 45px;
-            height: 45px;
-            fill: white;
+        .feature-card:hover .feature-icon {
+            transform: rotateY(360deg);
+            box-shadow: 0 15px 40px rgba(211, 47, 47, 0.4);
         }
 
         .feature-card h3 {
@@ -297,23 +371,44 @@
             font-size: 1.05rem;
         }
 
-        /* Download Section */
+        /* Download Section - Enhanced */
         .download-section {
             background: linear-gradient(135deg, var(--primary-red) 0%, var(--dark-red) 100%);
             color: white;
-            padding: 100px 20px;
+            padding: 120px 20px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         .download-content {
             max-width: 800px;
             margin: 0 auto;
+            position: relative;
+            z-index: 1;
         }
 
         .download-section h2 {
-            font-size: 3rem;
-            margin-bottom: 20px;
-            font-weight: 700;
+            font-size: 3.5rem;
+            margin-bottom: 25px;
+            font-weight: 800;
+            text-shadow: 2px 4px 8px rgba(0,0,0,0.2);
         }
 
         .download-section p {
@@ -323,19 +418,23 @@
         }
 
         .version-info {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 40px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 25px 35px;
+            border-radius: 20px;
+            margin-bottom: 50px;
             display: inline-block;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }
 
         .version-badge {
             background: var(--secondary-green);
-            padding: 8px 20px;
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 1.1rem;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(67, 160, 71, 0.4);
         }
 
         .download-platforms {
@@ -348,99 +447,63 @@
         .platform-btn {
             background: white;
             color: var(--text-dark);
-            padding: 20px 40px;
-            border-radius: 15px;
+            padding: 25px 45px;
+            border-radius: 18px;
             text-decoration: none;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 15px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: all 0.3s;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            font-weight: 700;
+            font-size: 1.15rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            border: 2px solid transparent;
         }
 
         .platform-btn:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.35);
+            border-color: var(--secondary-green);
         }
 
-        .platform-icon {
-            font-size: 2rem;
-        }
-
-        /* Footer */
+        /* Footer - Enhanced */
         .footer {
-            background: var(--text-dark);
+            background: #1a1a1a;
             color: white;
-            padding: 60px 20px 30px;
+            padding: 80px 20px 40px;
         }
 
         .footer-content {
             max-width: 1200px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 40px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 50px;
+            margin-bottom: 50px;
         }
 
         .footer-section h3 {
-            font-size: 1.3rem;
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            color: white;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
             margin-bottom: 20px;
         }
 
-        .footer-section p {
-            color: rgba(255,255,255,0.7);
-            line-height: 1.8;
+        .footer-logo img {
+            width: 50px;
+            height: 50px;
         }
 
-        .footer-links {
-            list-style: none;
-        }
-
-        .footer-links li {
-            margin-bottom: 12px;
-        }
-
-        .footer-links a {
-            color: rgba(255,255,255,0.7);
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-
-        .footer-links a:hover {
-            color: white;
-        }
-
-        .social-links {
-            display: flex;
-            gap: 15px;
-        }
-
-        .social-links a {
-            width: 40px;
-            height: 40px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-
-        .social-links a:hover {
-            background: var(--primary-red);
-            transform: translateY(-3px);
-        }
-
-        .footer-bottom {
-            border-top: 1px solid rgba(255,255,255,0.1);
-            padding-top: 30px;
-            text-align: center;
-            color: rgba(255,255,255,0.7);
+        .footer-logo span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-red);
         }
 
         /* Responsive */
@@ -458,24 +521,16 @@
             }
 
             .section-title {
-                font-size: 2rem;
+                font-size: 2.2rem;
             }
 
             .download-section h2 {
                 font-size: 2rem;
             }
 
-            .hero-buttons,
-            .download-platforms {
-                flex-direction: column;
-                width: 100%;
-            }
-
-            .btn,
-            .platform-btn {
-                width: 100%;
-                max-width: 400px;
-                justify-content: center;
+            .app-icon {
+                width: 120px;
+                height: 120px;
             }
         }
 
@@ -502,9 +557,7 @@
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm6 9.09c0 4-2.55 7.7-6 8.83-3.45-1.13-6-4.82-6-8.83V6.31l6-2.12 6 2.12v4.78z"/>
-                </svg>
+                <img src="assets/image/logo.png" alt="Rescue 1122 Logo">
                 EC Saver
             </div>
             <ul class="nav-links">
@@ -519,14 +572,17 @@
     <section class="hero">
         <div class="hero-content">
             <div class="app-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm6 9.09c0 4-2.55 7.7-6 8.83-3.45-1.13-6-4.82-6-8.83V6.31l6-2.12 6 2.12v4.78z"/>
-                    <path d="M10.5 14.5l-2.5-2.5 1.41-1.41L10.5 11.67l4.09-4.09L16 9z"/>
-                </svg>
+                <img src="assets/image/logo.png" alt="EC Saver Logo">
             </div>
+            
+            <div class="official-badge">
+                🚨 Official Emergency Management System
+            </div>
+            
             <h1>EC Saver</h1>
             <p class="subtitle">Emergency Cases Saver</p>
             <p class="tagline">Professional Emergency Management for Rescue 1122 Pakistan</p>
+            
             <div class="hero-buttons">
                 <a href="#download" class="btn btn-primary">
                     <span>📥</span> Download Now
@@ -564,6 +620,8 @@
     <section class="features" id="features">
         <div class="container">
             <h2 class="section-title">Powerful Features</h2>
+            <p class="section-subtitle">Everything you need to manage emergency cases professionally and efficiently</p>
+            
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -664,7 +722,10 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section">
-                <h3>About EC Saver</h3>
+                <div class="footer-logo">
+                    <img src="assets/image/logo.png" alt="Rescue 1122">
+                    <span>EC Saver</span>
+                </div>
                 <p>Professional emergency management application designed for Rescue 1122 Pakistan personnel to efficiently manage and record emergency cases.</p>
             </div>
             <div class="footer-section">
