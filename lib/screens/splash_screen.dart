@@ -64,16 +64,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       final prefs = await SharedPreferences.getInstance();
       final lastAttempt = prefs.getString('last_attempted_update');
 
-      // If last attempt exists and installed version meets or exceeds it, clear flag
       if (lastAttempt != null && lastAttempt.isNotEmpty) {
-        final cmp = UpdateService._compareVersions(currentVersion, lastAttempt);
+        final cmp = UpdateService.compareVersions(currentVersion, lastAttempt);
         if (cmp >= 0) {
           await prefs.remove('last_attempted_update');
-          // Proceed normally (no prompt)
           _checkRegistrationStatus();
           return;
         }
-        // else: previous attempt failed; continue to check remotely
       }
 
       final updateInfo = await UpdateService.checkForUpdate(currentVersion: currentVersion);

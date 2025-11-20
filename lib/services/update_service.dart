@@ -14,7 +14,7 @@ class UpdateService {
       'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
   // Compare semantic versions: returns 1 if a>b, -1 if a<b, 0 if equal
-  static int _compareVersions(String a, String b) {
+  static int compareVersions(String a, String b) {
     List<int> pa = a.split('+')[0].split('-')[0].split('.').map((s) {
       final n = int.tryParse(s);
       return n ?? 0;
@@ -64,7 +64,7 @@ class UpdateService {
         return {'updateAvailable': false, 'reason': 'No APK or version in release'};
       }
 
-      final cmp = _compareVersions(latestVersion, currentVersion);
+      final cmp = compareVersions(latestVersion, currentVersion);
       final updateAvailable = cmp == 1;
 
       return {
