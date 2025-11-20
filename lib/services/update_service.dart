@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_file/open_file.dart';
-import 'package:path/path.dart' as p;
+import 'package:package_info_plus/package_info_plus.dart';
 
 class UpdateService {
   static const String githubOwner = 'Rehancodecraft';
@@ -12,44 +13,69 @@ class UpdateService {
   static const String githubApiUrl =
       'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
-  static Future<Map<String, dynamic>> checkForUpdate(String currentVersion) async {
+  // Compare semantic versions: returns 1 if a>b, -1 if a<b, 0 if equal
+  static int _compareVersions(String a, String b) {
+    List<int> pa = a.split('+')[0].split('-')[0].split('.').map((s) {
+      final n = int.tryParse(s);
+      return n ?? 0;
+    }).toList();
+    List<int> pb = b.split('+')[0].split('-')[0].split('.').map((s) {
+      final n = int.tryParse(s);
+      return n ?? 0;
+    }).toList();
+    final len = [pa.length, pb.length].reduce((x, y) => x > y ? x : y);
+    for (int i = 0; i < len; i++) {
+      final ia = i < pa.length ? pa[i] : 0;
+      final ib = i < pb.length ? pb[i] : 0;
+      if (ia > ib) return 1;
+      if (ia < ib) return -1;
+    }
+    return 0;
+  }
+
+  // If currentVersion is null, get it via PackageInfo
+  static Future<Map<String, dynamic>> checkForUpdate({String? currentVersion}) async {
     try {
-      final response = await http.get(Uri.parse(githubApiUrl));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final latestVersion = (data['tag_name'] ?? '').replaceAll('v', '');
-        final assets = data['assets'] as List<dynamic>? ?? [];
-        final apkAsset = assets.firstWhere(
-          (a) => (a['name'] as String).endsWith('.apk'),
-          orElse: () => null,
-        );
-        final apkUrl = apkAsset != null ? apkAsset['browser_download_url'] as String : '';
-
-        bool isUpdateAvailable = false;
-        if (latestVersion.isNotEmpty && apkUrl.isNotEmpty) {
-          final currentParts = currentVersion.split('.').map(int.parse).toList();
-          final latestParts = latestVersion.split('.').map(int.parse).toList();
-          for (int i = 0; i < 3; i++) {
-            if (latestParts[i] > currentParts[i]) {
-              isUpdateAvailable = true;
-              break;
-            } else if (latestParts[i] < currentParts[i]) {
-              break;
-            }
-          }
-        }
-
-        return {
-          'updateAvailable': isUpdateAvailable,
-          'latestVersion': latestVersion,
-          'downloadUrl': apkUrl,
-          'releaseNotes': data['body'] ?? '',
-        };
+      if (currentVersion == null) {
+        final pkg = await PackageInfo.fromPlatform();
+        currentVersion = pkg.version;
       }
-      return {'updateAvailable': false};
+
+      final response = await http.get(Uri.parse(githubApiUrl));
+      if (response.statusCode != 200) {
+        return {'updateAvailable': false, 'reason': 'GitHub API ${response.statusCode}'};
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final tag = (data['tag_name'] ?? '').toString();
+      final latestVersion = tag.replaceAll('v', '');
+      String apkUrl = '';
+
+      final assets = (data['assets'] as List<dynamic>?) ?? [];
+      for (final a in assets) {
+        final name = (a['name'] ?? '').toString();
+        if (name.toLowerCase().endsWith('.apk')) {
+          apkUrl = (a['browser_download_url'] ?? '').toString();
+          break;
+        }
+      }
+
+      if (latestVersion.isEmpty || apkUrl.isEmpty) {
+        return {'updateAvailable': false, 'reason': 'No APK or version in release'};
+      }
+
+      final cmp = _compareVersions(latestVersion, currentVersion);
+      final updateAvailable = cmp == 1;
+
+      return {
+        'updateAvailable': updateAvailable,
+        'latestVersion': latestVersion,
+        'downloadUrl': apkUrl,
+        'releaseNotes': data['body'] ?? '',
+        'currentVersion': currentVersion,
+      };
     } catch (e) {
-      print('Update check error: $e');
-      return {'updateAvailable': false};
+      return {'updateAvailable': false, 'error': e.toString()};
     }
   }
 

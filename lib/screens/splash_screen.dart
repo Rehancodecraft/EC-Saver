@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import 'registration_screen.dart';
 import 'home_screen.dart';
@@ -55,10 +56,27 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<void> _checkForUpdatesAndProceed() async {
     await Future.delayed(const Duration(milliseconds: 1500));
+
     try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
-      final updateInfo = await UpdateService.checkForUpdate(currentVersion);
+      final pkg = await PackageInfo.fromPlatform();
+      final currentVersion = pkg.version;
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastAttempt = prefs.getString('last_attempted_update');
+
+      // If last attempt exists and installed version meets or exceeds it, clear flag
+      if (lastAttempt != null && lastAttempt.isNotEmpty) {
+        final cmp = UpdateService._compareVersions(currentVersion, lastAttempt);
+        if (cmp >= 0) {
+          await prefs.remove('last_attempted_update');
+          // Proceed normally (no prompt)
+          _checkRegistrationStatus();
+          return;
+        }
+        // else: previous attempt failed; continue to check remotely
+      }
+
+      final updateInfo = await UpdateService.checkForUpdate(currentVersion: currentVersion);
       if (updateInfo['updateAvailable'] == true && mounted) {
         showDialog(
           context: context,
@@ -74,6 +92,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     } catch (e) {
       print('DEBUG: Update check failed: $e');
     }
+
+    // No update or error — proceed
     _checkRegistrationStatus();
   }
 

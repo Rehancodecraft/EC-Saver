@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import '../services/update_service.dart';
@@ -34,57 +35,52 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
+      // mark attempt in prefs
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_attempted_update', widget.latestVersion);
+
       await UpdateService.downloadAndInstallUpdate(widget.downloadUrl, (p) {
         if (mounted) {
           setState(() {
             _progress = p.clamp(0.0, 1.0);
-            if (p >= 1.0) {
-              _status = 'Download complete. Opening installer...';
-            } else {
-              _status = 'Downloading ${(p * 100).toInt()}%';
-            }
+            _status = p >= 1.0 ? 'Download complete. Opening installer...' : 'Downloading ${(p * 100).toInt()}%';
           });
         }
       });
 
-      // small delay to let OpenFile/open installer trigger
+      // small delay to allow installer intent
       await Future.delayed(const Duration(milliseconds: 800));
 
       if (mounted) {
-        // Inform user then exit app so installer can replace app cleanly
         setState(() {
           _isDownloading = false;
-          _status = 'Installer opened. The app will close so installation can proceed.';
+          _status = 'Installer opened. The app will close.';
         });
 
-        // Give user a moment to read status
-        await Future.delayed(const Duration(seconds: 1));
-
-        // Close dialog if open
+        // close dialog then exit so installer can proceed
+        await Future.delayed(const Duration(milliseconds: 600));
         if (mounted) Navigator.of(context).pop();
 
-        // Gracefully exit the app so installer can run and new app can be started.
-        // On Android SystemNavigator.pop() will move app to background; exit(0) ensures process ends.
+        // exit app
         try {
           SystemNavigator.pop();
         } catch (_) {}
-        // Fallback to ensure process terminates
         try {
           exit(0);
         } catch (_) {}
       }
     } catch (e) {
+      // clear attempted flag on error
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('last_attempted_update');
+
       if (mounted) {
         setState(() {
           _isDownloading = false;
           _status = 'Download failed';
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Update failed: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
+          SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
         );
       }
     }
