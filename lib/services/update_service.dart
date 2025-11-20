@@ -13,17 +13,11 @@ class UpdateService {
   static const String githubApiUrl =
       'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
-  // Compare semantic versions: returns 1 if a>b, -1 if a<b, 0 if equal
+  // ensure this is public and present
   static int compareVersions(String a, String b) {
-    List<int> pa = a.split('+')[0].split('-')[0].split('.').map((s) {
-      final n = int.tryParse(s);
-      return n ?? 0;
-    }).toList();
-    List<int> pb = b.split('+')[0].split('-')[0].split('.').map((s) {
-      final n = int.tryParse(s);
-      return n ?? 0;
-    }).toList();
-    final len = [pa.length, pb.length].reduce((x, y) => x > y ? x : y);
+    final pa = a.split('+')[0].split('-')[0].split('.').map((s) => int.tryParse(s) ?? 0).toList();
+    final pb = b.split('+')[0].split('-')[0].split('.').map((s) => int.tryParse(s) ?? 0).toList();
+    final len = pa.length > pb.length ? pa.length : pb.length;
     for (int i = 0; i < len; i++) {
       final ia = i < pa.length ? pa[i] : 0;
       final ib = i < pb.length ? pb[i] : 0;

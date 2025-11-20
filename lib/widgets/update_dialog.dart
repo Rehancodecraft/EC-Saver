@@ -1,8 +1,9 @@
-import 'dart:io';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+
 import '../services/update_service.dart';
 import '../utils/constants.dart';
 
@@ -35,10 +36,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
-      // mark attempt in prefs
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_attempted_update', widget.latestVersion);
-
       await UpdateService.downloadAndInstallUpdate(widget.downloadUrl, (p) {
         if (mounted) {
           setState(() {
@@ -48,29 +45,17 @@ class _UpdateDialogState extends State<UpdateDialog> {
         }
       });
 
-      // small delay to allow installer intent
+      // AFTER successful download/open, persist attempted version
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_attempted_update', widget.latestVersion);
+
+      // small delay, then close and exit to allow installer to finish
       await Future.delayed(const Duration(milliseconds: 800));
-
-      if (mounted) {
-        setState(() {
-          _isDownloading = false;
-          _status = 'Installer opened. The app will close.';
-        });
-
-        // close dialog then exit so installer can proceed
-        await Future.delayed(const Duration(milliseconds: 600));
-        if (mounted) Navigator.of(context).pop();
-
-        // exit app
-        try {
-          SystemNavigator.pop();
-        } catch (_) {}
-        try {
-          exit(0);
-        } catch (_) {}
-      }
+      if (mounted) Navigator.of(context).pop();
+      try { SystemNavigator.pop(); } catch (_) {}
+      try { exit(0); } catch (_) {}
     } catch (e) {
-      // clear attempted flag on error
+      // on error remove any flag
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('last_attempted_update');
 
