@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/constants.dart';
 import 'registration_screen.dart';
 import 'home_screen.dart';
@@ -54,12 +55,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<void> _checkForUpdatesAndProceed() async {
     await Future.delayed(const Duration(milliseconds: 1500));
-
     try {
-      final updateInfo = await UpdateService.checkForUpdate();
-
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+      final updateInfo = await UpdateService.checkForUpdate(currentVersion);
       if (updateInfo['updateAvailable'] == true && mounted) {
-        // ✅ VERIFIED: Shows forced update dialog
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -74,7 +74,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     } catch (e) {
       print('DEBUG: Update check failed: $e');
     }
-
     _checkRegistrationStatus();
   }
 

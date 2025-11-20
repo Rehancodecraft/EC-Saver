@@ -1,99 +1,58 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path/path.dart' as p;
-import 'package:install_plugin/install_plugin.dart';
 
 class UpdateService {
-  // UPDATE WITH YOUR ACTUAL GITHUB INFO
-  static const String githubOwner = 'Rehancodecraft'; // Your GitHub username
+  static const String githubOwner = 'Rehancodecraft';
   static const String githubRepo = 'EC-Saver';
-  static const String githubApiUrl = 'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
+  static const String githubApiUrl =
+      'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
-  static Future<Map<String, dynamic>> checkForUpdate() async {
+  static Future<Map<String, dynamic>> checkForUpdate(String currentVersion) async {
     try {
-      // Get current app version
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
-
-      print('DEBUG: Checking for updates...');
-      print('DEBUG: Current version: $currentVersion');
-
-      // Fetch latest release from GitHub
-      final response = await http.get(
-        Uri.parse(githubApiUrl),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
-      );
-
-      print('DEBUG: GitHub API response: ${response.statusCode}');
-
+      final response = await http.get(Uri.parse(githubApiUrl));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final latestVersion = data['tag_name'].toString().replaceAll('v', '');
-        final apkUrl = _getApkDownloadUrl(data['assets']);
+        final latestVersion = (data['tag_name'] ?? '').replaceAll('v', '');
+        final assets = data['assets'] as List<dynamic>? ?? [];
+        final apkAsset = assets.firstWhere(
+          (a) => (a['name'] as String).endsWith('.apk'),
+          orElse: () => null,
+        );
+        final apkUrl = apkAsset != null ? apkAsset['browser_download_url'] as String : '';
 
-        print('DEBUG: Latest version: $latestVersion');
-        print('DEBUG: Download URL: $apkUrl');
-
-        if (apkUrl.isEmpty) {
-          print('DEBUG: No APK found in release');
-          return {'updateAvailable': false};
+        bool isUpdateAvailable = false;
+        if (latestVersion.isNotEmpty && apkUrl.isNotEmpty) {
+          final currentParts = currentVersion.split('.').map(int.parse).toList();
+          final latestParts = latestVersion.split('.').map(int.parse).toList();
+          for (int i = 0; i < 3; i++) {
+            if (latestParts[i] > currentParts[i]) {
+              isUpdateAvailable = true;
+              break;
+            } else if (latestParts[i] < currentParts[i]) {
+              break;
+            }
+          }
         }
 
-        if (_isUpdateAvailable(currentVersion, latestVersion)) {
-          return {
-            'updateAvailable': true,
-            'latestVersion': latestVersion,
-            'downloadUrl': apkUrl,
-            'releaseNotes': data['body'] ?? 'New update available',
-          };
-        }
+        return {
+          'updateAvailable': isUpdateAvailable,
+          'latestVersion': latestVersion,
+          'downloadUrl': apkUrl,
+          'releaseNotes': data['body'] ?? '',
+        };
       }
-
       return {'updateAvailable': false};
     } catch (e) {
-      print('DEBUG: Update check error: $e');
-      return {'updateAvailable': false, 'error': e.toString()};
+      print('Update check error: $e');
+      return {'updateAvailable': false};
     }
   }
 
-  static String _getApkDownloadUrl(List<dynamic> assets) {
-    for (var asset in assets) {
-      if (asset['name'].toString().endsWith('.apk')) {
-        return asset['browser_download_url'];
-      }
-    }
-    return '';
-  }
-
-  static bool _isUpdateAvailable(String current, String latest) {
-    final currentParts = current.split('.').map(int.parse).toList();
-    final latestParts = latest.split('.').map(int.parse).toList();
-
-    for (int i = 0; i < 3; i++) {
-      if (latestParts[i] > currentParts[i]) return true;
-      if (latestParts[i] < currentParts[i]) return false;
-    }
-    return false;
-  }
-
-  // Simplified: Just open browser to download
-  static Future<void> downloadUpdate(String downloadUrl) async {
-    final Uri url = Uri.parse(downloadUrl);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      throw Exception('Could not open download link');
-    }
-  }
-
-  // Download APK into app-specific external storage and invoke installer via InstallPlugin
-  // onProgress receives values 0.0 .. 1.0
   static Future<void> downloadAndInstallUpdate(
     String downloadUrl,
     void Function(double) onProgress,
@@ -102,25 +61,35 @@ class UpdateService {
       throw Exception('Empty download URL');
     }
 
+    if (Platform.isAndroid) {
+      final storageStatus = await Permission.storage.request();
+      if (!storageStatus.isGranted) {
+        throw Exception('Storage permission denied');
+      }
+    }
+
     final uri = Uri.parse(downloadUrl);
     final client = http.Client();
-
     final request = http.Request('GET', uri);
     final response = await client.send(request);
 
     if (response.statusCode != 200) {
       client.close();
-      throw Exception('Failed to download APK: ${response.statusCode}');
+      throw Exception('Failed to download APK: HTTP ${response.statusCode}');
     }
 
     final contentLength = response.contentLength ?? 0;
     var received = 0;
 
-    // Determine safe directory (app-specific external dir preferred)
     Directory dir;
     try {
       if (Platform.isAndroid) {
-        dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+        final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+        if (dirs != null && dirs.isNotEmpty) {
+          dir = dirs.first;
+        } else {
+          dir = Directory('/storage/emulated/0/Download');
+        }
       } else {
         dir = await getApplicationDocumentsDirectory();
       }
@@ -129,19 +98,17 @@ class UpdateService {
       }
     } catch (e) {
       client.close();
-      throw Exception('Could not prepare download directory: $e');
+      throw Exception('Failed to access download directory: $e');
     }
 
     final filePath = p.join(dir.path, 'ec-saver-update.apk');
     final file = File(filePath);
 
     try {
-      // If exists, try to delete; ignore if fails
       if (await file.exists()) {
         try {
           await file.delete();
         } catch (e) {
-          // warn but continue
           print('WARN: Could not delete existing APK: $e');
         }
       }
@@ -166,17 +133,11 @@ class UpdateService {
         throw Exception('Downloaded file is missing or empty after write.');
       }
 
-      // Small delay to ensure filesystem flush
       await Future.delayed(const Duration(milliseconds: 300));
+      print('DEBUG: Download complete. File saved to: $filePath');
 
-      // Invoke installer via InstallPlugin (handles FileProvider)
-      final pkgName = 'com.nexivault.emergency_cases_saver';
-      try {
-        await InstallPlugin.installApk(filePath, pkgName);
-      } catch (e) {
-        // Provide clear error for troubleshooting
-        throw Exception('Failed to open installer for $filePath : $e');
-      }
+      final result = await OpenFile.open(filePath);
+      print('DEBUG: OpenFile result: ${result.type} - ${result.message}');
     } catch (e) {
       throw Exception('Download/install failed for path=$filePath : $e');
     }

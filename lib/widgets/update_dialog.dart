@@ -45,15 +45,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
         }
       });
 
-      // Wait a moment to ensure OpenFile.open is triggered
       await Future.delayed(const Duration(seconds: 1));
-
       if (mounted) {
         setState(() {
           _isDownloading = false;
           _status = 'Installer opened. If not, check your Downloads folder and install manually.';
         });
-        // Auto-close dialog after a few seconds
         Future.delayed(const Duration(seconds: 3), () {
           if (mounted) Navigator.of(context).pop();
         });
