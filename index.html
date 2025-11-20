@@ -471,12 +471,13 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 8px 30px rgba(0,0,0,0.25);
             border: 2px solid transparent;
+            cursor: pointer;
+            font-family: inherit;
         }
 
-        .platform-btn:hover {
-            transform: translateY(-8px) scale(1.05);
-            box-shadow: 0 15px 50px rgba(0,0,0,0.35);
-            border-color: var(--secondary-green);
+        .platform-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         /* Footer - Enhanced */
@@ -710,17 +711,13 @@
             </div>
 
             <div class="download-platforms">
-                <!-- Changed: Direct download link -->
-                <a href="#" 
-                   class="platform-btn" 
-                   id="androidDownload"
-                   download="ec-saver.apk">
+                <button class="platform-btn" id="androidDownload">
                     <span class="platform-icon">🤖</span>
                     <div>
                         <div style="font-size: 0.9rem; opacity: 0.7;">Download for</div>
-                        <div>Android</div>
+                        <div id="downloadText">Android</div>
                     </div>
-                </a>
+                </button>
                 <a href="https://github.com/Rehancodecraft/EC-Saver/releases" 
                    class="platform-btn"
                    target="_blank">
@@ -770,7 +767,9 @@
     </footer>
 
     <script>
-        // Fetch latest version from GitHub API and enable direct download
+        let currentApkUrl = null;
+        let currentApkName = 'ec-saver.apk';
+
         async function fetchLatestRelease() {
             try {
                 console.log('Fetching latest release from GitHub...');
@@ -791,61 +790,80 @@
                 // Update version displays
                 document.getElementById('version').textContent = version;
                 document.getElementById('currentVersion').textContent = `Latest Version: ${version}`;
-                
+                document.getElementById('version').textContent = version;
+                document.getElementById('currentVersion').textContent = `Latest Version: ${version}`;const versionedApk = apkAssets.find(asset => 
+                (version.replace('v', ''))
                 // Find the correct APK
                 let apkUrl = null;
-                let apkName = 'ec-saver.apk';
-                
+                let apkName = 'ec-saver.apk';if (versionedApk) {
+                rowser_download_url;
                 // Try to find versioned APK first
                 const versionedApk = apkAssets.find(asset => 
-                    asset.name.includes(version.replace('v', ''))
-                );
+                    asset.name.includes(version.replace('v', ''))  currentApkUrl = apkAssets[0].browser_download_url;
+                );    currentApkName = apkAssets[0].name;
                 
                 if (versionedApk) {
-                    apkUrl = versionedApk.browser_download_url;
-                    apkName = versionedApk.name;
+                    apkUrl = versionedApk.browser_download_url;pkUrl);
+                    apkName = versionedApk.name;kName);
                 } else if (apkAssets.length > 0) {
                     apkUrl = apkAssets[0].browser_download_url;
-                    apkName = apkAssets[0].name;
-                }
-                
+                    apkName = apkAssets[0].name;onsole.error('Error fetching release:', error);
+                }document.getElementById('version').textContent = 'v1.0.2';
+                .textContent = 'Latest Version: v1.0.2';
                 console.log('APK download URL:', apkUrl);
                 console.log('APK filename:', apkName);
                 
                 // Update download button for direct download
-                const downloadBtn = document.getElementById('androidDownload');
+                const downloadBtn = document.getElementById('androidDownload');adAPK() {
                 if (apkUrl) {
-                    downloadBtn.href = apkUrl;
-                    downloadBtn.setAttribute('download', apkName);
+                    downloadBtn.href = apkUrl; releases page...');
+                    downloadBtn.setAttribute('download', apkName);ow.open('https://github.com/Rehancodecraft/EC-Saver/releases/latest', '_blank');
                     
                     // Add click handler for better UX
                     downloadBtn.addEventListener('click', function(e) {
                         // Show downloading message
                         const originalText = this.querySelector('div > div:last-child').textContent;
-                        this.querySelector('div > div:last-child').textContent = 'Downloading...';
+                        this.querySelector('div > div:last-child').textContent = 'Downloading...';alText = downloadText.textContent;
                         
                         // Reset text after 2 seconds
                         setTimeout(() => {
-                            this.querySelector('div > div:last-child').textContent = originalText;
-                        }, 2000);
+                            this.querySelector('div > div:last-child').textContent = originalText;Content = 'Downloading...';
+                        }, 2000);dBtn.disabled = true;
                     });
                     
-                    console.log('✅ Download link configured for direct download');
+                    console.log('✅ Download link configured for direct download');nk = document.createElement('a');
                 } else {
                     console.warn('⚠️ No APK found, using releases page');
                     downloadBtn.href = `https://github.com/Rehancodecraft/EC-Saver/releases/latest`;
-                    downloadBtn.removeAttribute('download');
-                }
-                
+                    downloadBtn.removeAttribute('download');ocument.body.appendChild(link);
+                }link.click();
+                .removeChild(link);
             } catch (error) {
                 console.error('Error fetching release:', error);
                 // Fallback to releases page
                 document.getElementById('version').textContent = 'v1.0.2';
                 document.getElementById('currentVersion').textContent = 'Latest Version: v1.0.2';
                 document.getElementById('androidDownload').href = 'https://github.com/Rehancodecraft/EC-Saver/releases/latest';
-                document.getElementById('androidDownload').removeAttribute('download');
-            }
-        }
+                document.getElementById('androidDownload').removeAttribute('download');           downloadBtn.disabled = false;
+            }           }, 2000);
+        }                }, 500);
+
+        // Call on page load
+        fetchLatestRelease();                console.error('Download error:', error);
+= 'Failed';
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {;
+            anchor.addEventListener('click', function (e) {abled = false;
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });indow.open(currentApkUrl, '_blank');
+                }
+            });
+        });
+    </script> // Add click event listener
+</body> document.getElementById('androidDownload').addEventListener('click', downloadAPK);
+</html>
 
         // Call on page load
         fetchLatestRelease();
