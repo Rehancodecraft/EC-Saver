@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:open_file/open_file.dart';
 import '../services/update_service.dart';
 import '../utils/constants.dart';
 
@@ -44,37 +45,25 @@ class _UpdateDialogState extends State<UpdateDialog> {
         }
       });
 
-      // Download and install successful
+      // Wait a moment to ensure OpenFile.open is triggered
+      await Future.delayed(const Duration(seconds: 1));
+
       if (mounted) {
         setState(() {
-          _status = 'Please install the update';
           _isDownloading = false;
+          _status = 'Installer opened. If not, check your Downloads folder and install manually.';
         });
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✓ Download complete! Please install the update.'),
-            backgroundColor: AppColors.secondaryGreen,
-            duration: Duration(seconds: 3),
-          ),
-        );
-
-        // Auto-close dialog after 2 seconds
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.of(context).pop();
-          }
+        // Auto-close dialog after a few seconds
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) Navigator.of(context).pop();
         });
       }
     } catch (e) {
-      print('DEBUG: Download error: $e');
       if (mounted) {
         setState(() {
           _isDownloading = false;
           _status = 'Download failed';
         });
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Update failed: $e'),

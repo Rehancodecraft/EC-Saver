@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_file/open_file.dart';
+import 'package:path/path.dart' as p;
+import 'package:install_plugin/install_plugin.dart';
 
 class UpdateService {
   // UPDATE WITH YOUR ACTUAL GITHUB INFO
@@ -90,7 +92,7 @@ class UpdateService {
     }
   }
 
-  // Download APK into app external storage and open installer.
+  // Download APK into app-specific external storage and invoke installer via InstallPlugin
   // onProgress receives values 0.0 .. 1.0
   static Future<void> downloadAndInstallUpdate(
     String downloadUrl,
@@ -100,20 +102,6 @@ class UpdateService {
       throw Exception('Empty download URL');
     }
 
-    // Request install permission (Android 8+)
-    if (Platform.isAndroid) {
-      final installStatus = await Permission.requestInstallPackages.request();
-      if (!installStatus.isGranted) {
-        throw Exception('Install permission denied. Please enable "Install unknown apps" in Settings.');
-      }
-
-      // Request storage permission
-      final storageStatus = await Permission.storage.request();
-      if (!storageStatus.isGranted) {
-        throw Exception('Storage permission denied');
-      }
-    }
-
     final uri = Uri.parse(downloadUrl);
     final client = http.Client();
 
@@ -121,78 +109,76 @@ class UpdateService {
     final response = await client.send(request);
 
     if (response.statusCode != 200) {
+      client.close();
       throw Exception('Failed to download APK: ${response.statusCode}');
     }
 
     final contentLength = response.contentLength ?? 0;
-    final bytes = <int>[];
-    int received = 0;
+    var received = 0;
 
-    // Use external storage directory for Android
+    // Determine safe directory (app-specific external dir preferred)
     Directory dir;
-    if (Platform.isAndroid) {
-      // Use Downloads directory for better compatibility
-      dir = Directory('/storage/emulated/0/Download');
-      if (!await dir.exists()) {
-        dir = (await getExternalStorageDirectory()) ?? await getApplicationDocumentsDirectory();
-      }
-    } else {
-      dir = await getApplicationDocumentsDirectory();
-    }
-
-    final filePath = '${dir.path}/ec_saver_update.apk';
-    final file = File(filePath);
-    
-    // Delete old file if exists
-    if (await file.exists()) {
-      await file.delete();
-    }
-
-    print('DEBUG: Downloading to: $filePath');
-
-    final sink = file.openWrite();
     try {
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (contentLength > 0) {
-          onProgress(received / contentLength);
-        } else {
-          onProgress(0);
+      if (Platform.isAndroid) {
+        dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+    } catch (e) {
+      client.close();
+      throw Exception('Could not prepare download directory: $e');
+    }
+
+    final filePath = p.join(dir.path, 'ec-saver-update.apk');
+    final file = File(filePath);
+
+    try {
+      // If exists, try to delete; ignore if fails
+      if (await file.exists()) {
+        try {
+          await file.delete();
+        } catch (e) {
+          // warn but continue
+          print('WARN: Could not delete existing APK: $e');
         }
       }
-    } finally {
-      await sink.close();
-      client.close();
-    }
 
-    // Ensure file is written
-    if (!await file.exists()) {
-      throw Exception('Downloaded file not found');
-    }
+      final sink = file.openWrite();
+      try {
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (contentLength > 0) {
+            onProgress(received / contentLength);
+          } else {
+            onProgress(0);
+          }
+        }
+      } finally {
+        await sink.close();
+        client.close();
+      }
 
-    final fileSize = await file.length();
-    if (fileSize == 0) {
-      throw Exception('Downloaded file is empty');
-    }
+      if (!await file.exists() || await file.length() == 0) {
+        throw Exception('Downloaded file is missing or empty after write.');
+      }
 
-    print('DEBUG: Download complete. File size: $fileSize bytes');
-    print('DEBUG: Opening installer for: $filePath');
+      // Small delay to ensure filesystem flush
+      await Future.delayed(const Duration(milliseconds: 300));
 
-    // IMPORTANT: Add delay before opening installer
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Open the APK file with system installer
-    final result = await OpenFile.open(
-      filePath,
-      type: 'application/vnd.android.package-archive',
-      uti: 'public.android-package-archive',
-    );
-
-    print('DEBUG: OpenFile result: ${result.type} - ${result.message}');
-
-    if (result.type != ResultType.done && result.type != ResultType.fileNotFound) {
-      throw Exception('Failed to open installer: ${result.message}');
+      // Invoke installer via InstallPlugin (handles FileProvider)
+      final pkgName = 'com.nexivault.emergency_cases_saver';
+      try {
+        await InstallPlugin.installApk(filePath, pkgName);
+      } catch (e) {
+        // Provide clear error for troubleshooting
+        throw Exception('Failed to open installer for $filePath : $e');
+      }
+    } catch (e) {
+      throw Exception('Download/install failed for path=$filePath : $e');
     }
   }
 }

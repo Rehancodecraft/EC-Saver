@@ -34,7 +34,8 @@ dependencies:
   package_info_plus: ^4.2.0
   http: ^1.1.0
   permission_handler: ^11.4.0
-  open_file: ^3.3.2  # ✅ VERIFIED: For in-app APK install
+  open_file: ^3.3.2
+  install_plugin: ^2.0.2
 
 dev_dependencies:
   flutter_test:
