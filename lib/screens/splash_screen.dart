@@ -15,33 +15,40 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+  late Animation<double> _scaleAnimation; // NEW: For zoom effect
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 800), // Reduced from 1200
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1500), // Increased for smoother animation
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    // Existing fade animation
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    // NEW: Scale/zoom animation
+    _scaleAnimation = Tween<double>(
+      begin: 0.5, // Start at 50% size
+      end: 1.0,   // End at 100% size
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutBack, // Bounce effect
+    ));
 
-    _controller.forward();
-    _checkForUpdatesAndProceed(); // ✅ VERIFIED: Checks on startup
+    _animationController.forward();
+    _checkForUpdatesAndProceed();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -110,54 +117,52 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primaryRed,
-              Color(0xFFB71C1C),
-            ],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Rescue 1122 Logo
-              Container(
-                width: 180,
-                height: 180,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-                child: Image.asset(
-                  'assets/image/logo.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.local_hospital,
-                      size: 100,
-                      color: AppColors.primaryRed,
-                    );
-                  },
+      backgroundColor: AppColors.primaryRed,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Logo with fade and zoom animation
+            FadeTransition(
+              opacity: _animation,
+              child: ScaleTransition( // NEW: Added zoom/scale animation
+                scale: _scaleAnimation,
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: Image.asset(
+                    'assets/image/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.local_hospital,
+                        size: 80,
+                        color: AppColors.primaryRed,
+                      );
+                    },
+                  ),
                 ),
               ),
+            ),
 
-              const SizedBox(height: 24),
-              
-              // App Name
-              const Text(
+            const SizedBox(height: 24),
+
+            // App Name
+            FadeTransition(
+              opacity: _animation,
+              child: const Text(
                 'EC Saver',
                 style: TextStyle(
                   fontSize: 32,
@@ -166,37 +171,37 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   letterSpacing: 2,
                 ),
               ),
-              
-              const SizedBox(height: 8),
-              
-              // Subtitle
-              Text(
-                'Emergency Cases Saver',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withOpacity(0.9),
-                  letterSpacing: 1,
-                ),
-              ),
-              
-              const SizedBox(height: 4),
-              
-              // Rescue 1122 Pakistan
-              Text(
-                'Rescue 1122 Pakistan',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.8),
-                ),
-              ),
+            ),
 
-              const SizedBox(height: 60),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 3,
+            const SizedBox(height: 8),
+            
+            // Subtitle
+            Text(
+              'Emergency Cases Saver',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.9),
+                letterSpacing: 1,
               ),
-            ],
-          ),
+            ),
+            
+            const SizedBox(height: 4),
+            
+            // Rescue 1122 Pakistan
+            Text(
+              'Rescue 1122 Pakistan',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+
+            const SizedBox(height: 60),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 3,
+            ),
+          ],
         ),
       ),
     );
