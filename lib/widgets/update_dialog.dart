@@ -20,29 +20,35 @@ class UpdateDialog extends StatefulWidget {
 
 class _UpdateDialogState extends State<UpdateDialog> {
   bool _isDownloading = false;
+  double _progress = 0.0;
+  String _status = 'Ready';
 
-  Future<void> _downloadUpdate() async {
-    setState(() => _isDownloading = true);
+  Future<void> _startDownload() async {
+    setState(() {
+      _isDownloading = true;
+      _progress = 0.0;
+      _status = 'Starting download...';
+    });
 
     try {
-      await UpdateService.downloadUpdate(widget.downloadUrl);
+      await UpdateService.downloadAndInstallUpdate(widget.downloadUrl, (p) {
+        setState(() {
+          _progress = p.clamp(0.0, 1.0);
+          _status = 'Downloading ${(p * 100).toInt()}%';
+        });
+      });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Opening browser to download APK...'),
-            backgroundColor: AppColors.secondaryGreen,
-          ),
-        );
-      }
+      setState(() {
+        _status = 'Download complete. Opening installer...';
+      });
     } catch (e) {
+      setState(() {
+        _isDownloading = false;
+        _status = 'Download failed: $e';
+      });
       if (mounted) {
-        setState(() => _isDownloading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -64,59 +70,31 @@ class _UpdateDialogState extends State<UpdateDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Version ${widget.latestVersion} is available',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
+            Text('Version ${widget.latestVersion} is available', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                widget.releaseNotes,
-                style: const TextStyle(fontSize: 13),
-                maxLines: 5,
-                overflow: TextOverflow.ellipsis,
-              ),
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+              child: Text(widget.releaseNotes, maxLines: 6, overflow: TextOverflow.ellipsis),
             ),
             const SizedBox(height: 16),
-            const Text(
-              '⚠️ You must update to continue using the app',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            if (_isDownloading) ...[
+              LinearProgressIndicator(value: _progress),
+              const SizedBox(height: 8),
+              Text(_status),
+            ] else ...[
+              const Text('You must update to continue using the app.'),
+            ]
           ],
         ),
         actions: [
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _isDownloading ? null : _downloadUpdate,
-              icon: _isDownloading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.download),
-              label: Text(_isDownloading ? 'Opening...' : 'Download Update'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryRed,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
+              onPressed: _isDownloading ? null : _startDownload,
+              icon: _isDownloading ? const SizedBox(width:16, height:16, child:CircularProgressIndicator(color:Colors.white, strokeWidth:2)) : const Icon(Icons.download),
+              label: Text(_isDownloading ? 'Downloading...' : 'Download & Install'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryRed),
             ),
           ),
         ],

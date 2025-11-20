@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:open_file/open_file.dart';
 
 class UpdateService {
   // UPDATE WITH YOUR ACTUAL GITHUB INFO
@@ -86,6 +87,81 @@ class UpdateService {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       throw Exception('Could not open download link');
+    }
+  }
+
+  // Download APK into app external storage and open installer.
+  // onProgress receives values 0.0 .. 1.0
+  static Future<void> downloadAndInstallUpdate(
+    String downloadUrl,
+    void Function(double) onProgress,
+  ) async {
+    if (downloadUrl.isEmpty) {
+      throw Exception('Empty download URL');
+    }
+
+    // Request storage permission on Android
+    if (Platform.isAndroid) {
+      final status = await Permission.storage.request();
+      if (!status.isGranted) {
+        throw Exception('Storage permission denied');
+      }
+    }
+
+    final uri = Uri.parse(downloadUrl);
+    final client = http.Client();
+
+    final request = http.Request('GET', uri);
+    final response = await client.send(request);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to download APK: ${response.statusCode}');
+    }
+
+    final contentLength = response.contentLength ?? 0;
+    final bytes = <int>[];
+    int received = 0;
+
+    // Determine file path (external storage preferred)
+    Directory dir;
+    if (Platform.isAndroid) {
+      dir = (await getExternalStorageDirectory()) ?? await getApplicationDocumentsDirectory();
+    } else {
+      dir = await getApplicationDocumentsDirectory();
+    }
+
+    final filePath = '${dir.path}/ec_saver_update.apk';
+    final file = File(filePath);
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    final sink = file.openWrite();
+    try {
+      await for (final chunk in response.stream) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (contentLength > 0) {
+          onProgress(received / contentLength);
+        } else {
+          onProgress(0);
+        }
+      }
+    } finally {
+      await sink.close();
+      client.close();
+    }
+
+    // Ensure file is written
+    if (!await file.exists() || await file.length() == 0) {
+      throw Exception('Downloaded file is empty');
+    }
+
+    // Open the file with system installer (no browser redirect)
+    final result = await OpenFile.open(file.path);
+    if (result.type != ResultType.done) {
+      // still return; system installer should handle
+      // throw Exception('Failed to open installer: ${result.message}');
     }
   }
 }
