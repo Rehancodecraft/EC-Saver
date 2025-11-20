@@ -16,62 +16,74 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
       
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.24.5'
           channel: 'stable'
+          cache: true
       
-      - name: Get dependencies
+      - name: Install dependencies
         run: flutter pub get
       
+      - name: Analyze code
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
+      
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
       
       - name: Get version from pubspec
         id: version
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//')
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
       
+      - name: Rename APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}.apk
+      
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
-          release_name: EC Saver v${{ steps.version.outputs.VERSION }}
+          name: EC Saver v${{ steps.version.outputs.VERSION }}
           body: |
             ## 🚀 EC Saver v${{ steps.version.outputs.VERSION }}
             
             ### What's New
-            - Bug fixes and improvements
-            - Performance enhancements
+            - Enhanced features and improvements
+            - Updated all 46 districts with complete tehsil data
+            - Improved UI/UX throughout the app
+            - Better error handling and stability
+            - PDF export functionality
+            - Auto-update notifications
             
-            ### 📥 Download
-            Download the APK below and install on your Android device.
+            ### 📥 Installation
+            1. Download `ec-saver-v${{ steps.version.outputs.VERSION }}.apk` below
+            2. Enable "Install from Unknown Sources" on your Android device
+            3. Install and enjoy!
             
-            ### ⚠️ Important
+            ### ⚠️ Important Notes
             - Uninstall old version first if upgrading
-            - Allow installation from unknown sources
+            - Android 5.0 (Lollipop) or higher required
+            - All data is stored locally on your device
             
-            Built with Flutter 3.24.0
+            ### 🐛 Bug Reports
+            Found a bug? [Report it here](https://github.com/Rehancodecraft/EC-Saver/issues)
+            
+            ---
+            Built with Flutter 3.24.5 | Designed by NexiVault
           draft: false
           prerelease: false
-      
-      - name: Upload APK to Release
-        uses: actions/upload-release-asset@v1
+          files: |
+            build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/app/outputs/flutter-apk/app-release.apk
-          asset_name: ec-saver-v${{ steps.version.outputs.VERSION }}.apk
-          asset_content_type: application/vnd.android.package-archive
