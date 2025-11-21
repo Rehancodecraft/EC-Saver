@@ -782,35 +782,45 @@
                 }
                 
                 const data = await response.json();
-                console.log('✅ Release data fetched:', data.tag_name);
+                console.log('✅ Release data:', data.tag_name);
                 
-                latestVersion = data.tag_name || 'v1.0.2';
+                const version = data.tag_name || 'v1.0.2';
                 const apkAssets = data.assets.filter(asset => asset.name.endsWith('.apk'));
                 
                 console.log(`📦 Found ${apkAssets.length} APK(s):`, apkAssets.map(a => a.name));
                 
                 // Update version displays
-                document.getElementById('version').textContent = latestVersion;
-                document.getElementById('currentVersion').textContent = `Latest Version: ${latestVersion}`;
+                document.getElementById('version').textContent = version;
+                document.getElementById('currentVersion').textContent = `Latest Version: ${version}`;
                 
-                // Find APK
-                const versionNumber = latestVersion.replace('v', '');
+                // Find the correct APK
+                let apkUrl = null;
+                let apkName = 'ec-saver.apk';
+                
+                // Try to find versioned APK first
+                const versionNumber = version.replace('v', '');
                 const versionedApk = apkAssets.find(asset => asset.name.includes(versionNumber));
                 
                 if (versionedApk) {
-                    latestApkUrl = versionedApk.browser_download_url;
-                    latestApkName = versionedApk.name;
-                    console.log('✅ APK URL:', latestApkUrl);
+                    apkUrl = versionedApk.browser_download_url;
+                    apkName = versionedApk.name;
+                    console.log('✅ Using versioned APK:', apkName);
                 } else if (apkAssets.length > 0) {
-                    latestApkUrl = apkAssets[0].browser_download_url;
-                    latestApkName = apkAssets[0].name;
-                    console.log('✅ APK URL:', latestApkUrl);
+                    apkUrl = apkAssets[0].browser_download_url;
+                    apkName = apkAssets[0].name;
+                    console.log('✅ Using first APK:', apkName);
+                } else {
+                    console.warn('⚠️ No APK found in release');
+                    apkUrl = null;
                 }
                 
             } catch (error) {
                 console.error('❌ Error fetching release:', error);
+                // Fallback to releases page
                 document.getElementById('version').textContent = 'v1.0.2';
                 document.getElementById('currentVersion').textContent = 'Latest Version: v1.0.2';
+                document.getElementById('androidDownload').href = 'https://github.com/Rehancodecraft/EC-Saver/releases/latest';
+                document.getElementById('androidDownload').removeAttribute('download');
             }
         }
 

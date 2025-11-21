@@ -56,14 +56,16 @@ class _UpdateDialogState extends State<UpdateDialog> {
         _status = 'Download complete. Opening installer...';
       });
 
+      // CRITICAL: Set dismissal AFTER successful download
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('dismissed_update_version', '${widget.latestVersion}-${widget.latestBuild}');
+      final versionKey = '${widget.latestVersion}-${widget.latestBuild}';
+      await prefs.setString('dismissed_update_version', versionKey);
+      print('DEBUG: UpdateDialog - Set dismissed version: $versionKey');
 
-      // Give the installer time to open, then exit the app to allow installation to proceed cleanly
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) Navigator.of(context).pop();
 
-      // Exit the app so the installer can update the APK without the app running
+      // Exit app to allow clean installation
       try {
         SystemNavigator.pop();
       } catch (_) {}
@@ -71,6 +73,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         exit(0);
       } catch (_) {}
     } catch (e) {
+      print('DEBUG: UpdateDialog - Download error: $e');
       setState(() {
         _isDownloading = false;
         _status = 'Download failed';

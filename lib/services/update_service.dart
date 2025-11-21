@@ -35,43 +35,46 @@ class UpdateService {
         final pkg = await PackageInfo.fromPlatform();
         currentVersion = pkg.version;
       }
-      print('DEBUG: currentVersion = $currentVersion');
+      final currentBuild = int.tryParse((await PackageInfo.fromPlatform()).buildNumber) ?? 1;
 
-      final resp = await http.get(Uri.parse(releasesLatestUrl), headers: {'Accept': 'application/vnd.github.v3+json'});
-      if (resp.statusCode != 200) {
-        print('DEBUG: GitHub API failed status=${resp.statusCode}');
+      print('DEBUG: UpdateService - Checking update for version: $currentVersion, build: $currentBuild');
+
+      final response = await http.get(Uri.parse(releasesLatestUrl), headers: {'Accept': 'application/vnd.github.v3+json'});
+      if (response.statusCode != 200) {
+        print('DEBUG: GitHub API failed status=${response.statusCode}');
         return {'updateAvailable': false};
       }
 
-      final data = json.decode(resp.body) as Map<String, dynamic>;
+      final data = json.decode(response.body) as Map<String, dynamic>;
       final tagName = (data['tag_name'] ?? '').toString();
       final latestVersion = tagName.replaceAll('v', '');
-      final assets = (data['assets'] as List<dynamic>? ) ?? [];
-      String apkUrl = '';
-      int apkSize = 0;
-      for (final a in assets) {
-        final name = (a['name'] ?? '').toString().toLowerCase();
-        if (name.endsWith('.apk')) {
-          apkUrl = a['browser_download_url'] ?? '';
-          apkSize = (a['size'] ?? 0) as int;
-          break;
-        }
+      final latestBuild = data['versionCode'] ?? 0;
+      final apkUrl = data['assets'] != null && (data['assets'] as List).isNotEmpty ? data['assets']![0]['browser_download_url'] : '';
+      final releaseNotes = data['body'] ?? '';
+      final forceUpdate = false; // GitHub API does not provide forceUpdate info
+
+      print('DEBUG: UpdateService - Latest version: $latestVersion, build: $latestBuild');
+
+      // Use build number for comparison (more reliable)
+      bool updateAvailable = (latestBuild ?? 0) > currentBuild;
+      if (!updateAvailable && latestBuild == currentBuild) {
+        // Fallback to version string comparison
+        updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
       }
 
-      print('DEBUG: latestVersion=$latestVersion apkUrl=$apkUrl apkSize=$apkSize');
-
-      final bool updateAvailable = (latestVersion.isNotEmpty && compareVersions(latestVersion, currentVersion) > 0);
+      print('DEBUG: UpdateService - Update available: $updateAvailable');
 
       return {
         'updateAvailable': updateAvailable,
         'latestVersion': latestVersion,
+        'latestBuild': latestBuild,
         'downloadUrl': apkUrl,
-        'releaseNotes': data['body'] ?? '',
-        'apkSize': apkSize,
+        'releaseNotes': releaseNotes,
+        'forceUpdate': forceUpdate,
       };
-    } catch (e, st) {
-      print('DEBUG: checkForUpdate error: $e\n$st');
-      return {'updateAvailable': false, 'error': e.toString()};
+    } catch (e) {
+      print('DEBUG: UpdateService - Error: $e');
+      return {'updateAvailable': false};
     }
   }
 

@@ -59,18 +59,32 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     try {
       final pkg = await PackageInfo.fromPlatform();
       final currentVersion = pkg.version;
-      print('DEBUG: Splash currentVersion=$currentVersion');
+      final currentBuild = int.tryParse(pkg.buildNumber) ?? 1;
+      print('DEBUG: Splash - Current version: $currentVersion, build: $currentBuild');
+
+      final prefs = await SharedPreferences.getInstance();
+      final dismissed = prefs.getString('dismissed_update_version');
+      print('DEBUG: Splash - Dismissed version: $dismissed');
 
       final info = await UpdateService.checkForUpdate(currentVersion: currentVersion);
-      print('DEBUG: UpdateService returned: $info');
+      print('DEBUG: Splash - Update info: $info');
 
       if (info['updateAvailable'] == true && (info['downloadUrl'] ?? '').toString().isNotEmpty && mounted) {
+        // Check if this exact version was already dismissed
+        final versionKey = '${info['latestVersion']}-${info['latestBuild']}';
+        if (dismissed == versionKey) {
+          print('DEBUG: Splash - Update already dismissed for $versionKey');
+          _checkRegistrationStatus();
+          return;
+        }
+        
+        print('DEBUG: Splash - Showing update dialog for ${info['latestVersion']}');
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) => UpdateDialog(
             latestVersion: info['latestVersion'],
-            latestBuild: info['latestBuild'] ?? 0, // <-- FIX: provide latestBuild
+            latestBuild: info['latestBuild'] ?? 0,
             downloadUrl: info['downloadUrl'],
             releaseNotes: info['releaseNotes'],
             forceUpdate: info['forceUpdate'] ?? false,
@@ -78,8 +92,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         );
         return;
       }
+      
+      print('DEBUG: Splash - No update available or proceeding to registration');
     } catch (e, st) {
-      print('DEBUG: _checkForUpdatesAndProceed error: $e\n$st');
+      print('DEBUG: Splash - Error: $e\n$st');
     }
 
     _checkRegistrationStatus();
