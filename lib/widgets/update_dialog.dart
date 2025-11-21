@@ -3,20 +3,24 @@ import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 import '../services/update_service.dart';
 import '../utils/constants.dart';
 
 class UpdateDialog extends StatefulWidget {
   final String latestVersion;
+  final int latestBuild;
   final String downloadUrl;
   final String releaseNotes;
-
+  final bool forceUpdate;
   const UpdateDialog({
     Key? key,
     required this.latestVersion,
+    required this.latestBuild,
     required this.downloadUrl,
     required this.releaseNotes,
+    this.forceUpdate = false,
   }) : super(key: key);
 
   @override
@@ -36,87 +40,83 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
-      await UpdateService.downloadAndInstallUpdate(widget.downloadUrl, (p) {
-        if (mounted) {
-          setState(() {
-            _progress = p.clamp(0.0, 1.0);
-            _status = p >= 1.0 ? 'Download complete. Opening installer...' : 'Downloading ${(p * 100).toInt()}%';
-          });
-        }
+      await UpdateService.downloadAndInstallUpdate(
+        widget.downloadUrl,
+        (progress) {
+          if (mounted) {
+            setState(() {
+              _progress = progress;
+              _status = 'Downloading ${(progress * 100).toStringAsFixed(0)}%';
+            });
+          }
+        },
+      );
+
+      setState(() {
+        _status = 'Download complete. Opening installer...';
       });
 
-      // AFTER successful download/open, persist attempted version
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_attempted_update', widget.latestVersion);
+      await prefs.setString('dismissed_update_version', '${widget.latestVersion}-${widget.latestBuild}');
 
-      // small delay, then close and exit to allow installer to finish
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Give the installer time to open, then exit the app to allow installation to proceed cleanly
+      await Future.delayed(const Duration(seconds: 1));
       if (mounted) Navigator.of(context).pop();
-      try { SystemNavigator.pop(); } catch (_) {}
-      try { exit(0); } catch (_) {}
-    } catch (e) {
-      // on error remove any flag
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('last_attempted_update');
 
-      if (mounted) {
-        setState(() {
-          _isDownloading = false;
-          _status = 'Download failed';
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
-        );
-      }
+      // Exit the app so the installer can update the APK without the app running
+      try {
+        SystemNavigator.pop();
+      } catch (_) {}
+      try {
+        exit(0);
+      } catch (_) {}
+    } catch (e) {
+      setState(() {
+        _isDownloading = false;
+        _status = 'Download failed';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false,
+      onWillPop: () async => widget.forceUpdate ? false : true,
       child: AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.system_update, color: AppColors.primaryRed),
+            Icon(Icons.system_update, color: Colors.red[700]),
             SizedBox(width: 12),
-            Text('Update Required'),
+            Text('Update Available'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Version ${widget.latestVersion} is available',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
+            Text('Version ${widget.latestVersion} is available',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                widget.releaseNotes,
-                style: const TextStyle(fontSize: 13),
-                maxLines: 6,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(widget.releaseNotes, maxLines: 6, overflow: TextOverflow.ellipsis),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (_isDownloading) ...[
               LinearProgressIndicator(value: _progress),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(_status),
             ] else ...[
               Text(
                 '⚠️ You must update to continue using the app',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -126,12 +126,23 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ],
         ),
         actions: [
+          if (!widget.forceUpdate)
+            TextButton(
+              onPressed: _isDownloading
+                  ? null
+                  : () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('dismissed_update_version', widget.latestVersion);
+                      Navigator.of(context).pop();
+                    },
+              child: Text('Later'),
+            ),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: _isDownloading ? null : _startDownload,
               icon: _isDownloading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
@@ -139,12 +150,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Icon(Icons.download),
+                  : Icon(Icons.download),
               label: Text(_isDownloading ? 'Downloading...' : 'Download & Install'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryRed,
+                backgroundColor: Colors.red[700],
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),

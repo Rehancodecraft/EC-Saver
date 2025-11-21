@@ -59,26 +59,26 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     try {
       final pkg = await PackageInfo.fromPlatform();
       final currentVersion = pkg.version;
+      final currentBuild = int.tryParse(pkg.buildNumber) ?? 1;
       final prefs = await SharedPreferences.getInstance();
-      final lastAttempt = prefs.getString('last_attempted_update');
-      if (lastAttempt != null && lastAttempt.isNotEmpty) {
-        final cmp = UpdateService.compareVersions(currentVersion, lastAttempt);
-        if (cmp >= 0) {
-          await prefs.remove('last_attempted_update');
+      final lastAttempt = prefs.getString('dismissed_update_version');
+
+      final updateInfo = await UpdateService.checkForUpdate();
+      if (updateInfo['updateAvailable'] == true && mounted) {
+        // Only skip if user dismissed this exact version/build
+        if (lastAttempt == '${updateInfo['latestVersion']}-${updateInfo['latestBuild']}') {
           _checkRegistrationStatus();
           return;
         }
-        // else previous attempt did not install — continue to remote check
-      }
-      final updateInfo = await UpdateService.checkForUpdate(currentVersion: currentVersion);
-      if (updateInfo['updateAvailable'] == true && mounted) {
         showDialog(
           context: context,
-          barrierDismissible: false,
+          barrierDismissible: updateInfo['forceUpdate'] != true,
           builder: (context) => UpdateDialog(
             latestVersion: updateInfo['latestVersion'],
+            latestBuild: updateInfo['latestBuild'],
             downloadUrl: updateInfo['downloadUrl'],
             releaseNotes: updateInfo['releaseNotes'],
+            forceUpdate: updateInfo['forceUpdate'] ?? false,
           ),
         );
         return;

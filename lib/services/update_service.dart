@@ -8,12 +8,9 @@ import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class UpdateService {
-  static const String githubOwner = 'Rehancodecraft';
-  static const String githubRepo = 'EC-Saver';
-  static const String githubApiUrl =
-      'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
+  static const String versionJsonUrl = 'https://raw.githubusercontent.com/USERNAME/repo/main/version.json';
 
-  // ensure this is public and present
+  // Compare semantic versions: returns 1 if a>b, -1 if a<b, 0 if equal
   static int compareVersions(String a, String b) {
     final pa = a.split('+')[0].split('-')[0].split('.').map((s) => int.tryParse(s) ?? 0).toList();
     final pb = b.split('+')[0].split('-')[0].split('.').map((s) => int.tryParse(s) ?? 0).toList();
@@ -27,49 +24,43 @@ class UpdateService {
     return 0;
   }
 
-  // If currentVersion is null, get it via PackageInfo
-  static Future<Map<String, dynamic>> checkForUpdate({String? currentVersion}) async {
+  static Future<Map<String, dynamic>> checkForUpdate() async {
     try {
-      if (currentVersion == null) {
-        final pkg = await PackageInfo.fromPlatform();
-        currentVersion = pkg.version;
-      }
+      final pkg = await PackageInfo.fromPlatform();
+      final currentVersion = pkg.version;
+      final currentBuild = int.tryParse(pkg.buildNumber) ?? 1;
 
-      final response = await http.get(Uri.parse(githubApiUrl));
-      if (response.statusCode != 200) {
-        return {'updateAvailable': false, 'reason': 'GitHub API ${response.statusCode}'};
-      }
+      final response = await http.get(Uri.parse(versionJsonUrl));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final latestVersion = data['version'] ?? '';
+        final latestBuild = data['versionCode'] ?? 0;
+        final apkUrl = data['apkUrl'] ?? '';
+        final releaseNotes = data['releaseNotes'] ?? '';
+        final forceUpdate = data['forceUpdate'] ?? false;
 
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      final tag = (data['tag_name'] ?? '').toString();
-      final latestVersion = tag.replaceAll('v', '');
-      String apkUrl = '';
-
-      final assets = (data['assets'] as List<dynamic>?) ?? [];
-      for (final a in assets) {
-        final name = (a['name'] ?? '').toString();
-        if (name.toLowerCase().endsWith('.apk')) {
-          apkUrl = (a['browser_download_url'] ?? '').toString();
-          break;
+        // Prefer versionCode comparison if available
+        bool updateAvailable = false;
+        if (latestBuild > currentBuild) {
+          updateAvailable = true;
+        } else if (latestBuild == currentBuild) {
+          // fallback to version string compare
+          updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
         }
+
+        return {
+          'updateAvailable': updateAvailable,
+          'latestVersion': latestVersion,
+          'latestBuild': latestBuild,
+          'downloadUrl': apkUrl,
+          'releaseNotes': releaseNotes,
+          'forceUpdate': forceUpdate,
+        };
       }
-
-      if (latestVersion.isEmpty || apkUrl.isEmpty) {
-        return {'updateAvailable': false, 'reason': 'No APK or version in release'};
-      }
-
-      final cmp = compareVersions(latestVersion, currentVersion);
-      final updateAvailable = cmp == 1;
-
-      return {
-        'updateAvailable': updateAvailable,
-        'latestVersion': latestVersion,
-        'downloadUrl': apkUrl,
-        'releaseNotes': data['body'] ?? '',
-        'currentVersion': currentVersion,
-      };
+      return {'updateAvailable': false};
     } catch (e) {
-      return {'updateAvailable': false, 'error': e.toString()};
+      print('Update check error: $e');
+      return {'updateAvailable': false};
     }
   }
 
@@ -77,89 +68,60 @@ class UpdateService {
     String downloadUrl,
     void Function(double) onProgress,
   ) async {
-    if (downloadUrl.isEmpty) {
-      throw Exception('Empty download URL');
-    }
-
+    if (downloadUrl.isEmpty) throw Exception('Empty download URL');
     if (Platform.isAndroid) {
       final storageStatus = await Permission.storage.request();
-      if (!storageStatus.isGranted) {
-        throw Exception('Storage permission denied');
-      }
+      if (!storageStatus.isGranted) throw Exception('Storage permission denied');
     }
 
     final uri = Uri.parse(downloadUrl);
     final client = http.Client();
-    final request = http.Request('GET', uri);
-    final response = await client.send(request);
-
+    final response = await client.send(http.Request('GET', uri));
     if (response.statusCode != 200) {
       client.close();
       throw Exception('Failed to download APK: HTTP ${response.statusCode}');
     }
 
     final contentLength = response.contentLength ?? 0;
-    var received = 0;
-
+    int received = 0;
     Directory dir;
-    try {
-      if (Platform.isAndroid) {
-        final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
-        if (dirs != null && dirs.isNotEmpty) {
-          dir = dirs.first;
-        } else {
-          dir = Directory('/storage/emulated/0/Download');
-        }
-      } else {
-        dir = await getApplicationDocumentsDirectory();
-      }
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-    } catch (e) {
-      client.close();
-      throw Exception('Failed to access download directory: $e');
+    if (Platform.isAndroid) {
+      final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+      dir = (dirs != null && dirs.isNotEmpty) ? dirs.first : Directory('/storage/emulated/0/Download');
+    } else {
+      dir = await getApplicationDocumentsDirectory();
     }
+    if (!await dir.exists()) await dir.create(recursive: true);
 
     final filePath = p.join(dir.path, 'ec-saver-update.apk');
     final file = File(filePath);
-
-    try {
-      if (await file.exists()) {
-        try {
-          await file.delete();
-        } catch (e) {
-          print('WARN: Could not delete existing APK: $e');
-        }
-      }
-
-      final sink = file.openWrite();
+    if (await file.exists()) {
       try {
-        await for (final chunk in response.stream) {
-          sink.add(chunk);
-          received += chunk.length;
-          if (contentLength > 0) {
-            onProgress(received / contentLength);
-          } else {
-            onProgress(0);
-          }
-        }
-      } finally {
-        await sink.close();
-        client.close();
-      }
-
-      if (!await file.exists() || await file.length() == 0) {
-        throw Exception('Downloaded file is missing or empty after write.');
-      }
-
-      await Future.delayed(const Duration(milliseconds: 300));
-      print('DEBUG: Download complete. File saved to: $filePath');
-
-      final result = await OpenFile.open(filePath);
-      print('DEBUG: OpenFile result: ${result.type} - ${result.message}');
-    } catch (e) {
-      throw Exception('Download/install failed for path=$filePath : $e');
+        await file.delete();
+      } catch (_) {}
     }
+
+    final sink = file.openWrite();
+    try {
+      await for (final chunk in response.stream) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (contentLength > 0) {
+          onProgress(received / contentLength);
+        } else {
+          onProgress(0);
+        }
+      }
+    } finally {
+      await sink.close();
+      client.close();
+    }
+
+    if (!await file.exists() || await file.length() == 0) {
+      throw Exception('Downloaded file is missing or empty after write.');
+    }
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    await OpenFile.open(filePath);
   }
 }
