@@ -70,6 +70,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           barrierDismissible: false,
           builder: (context) => UpdateDialog(
             latestVersion: info['latestVersion'],
+            latestBuild: info['latestBuild'] ?? 0, // <-- FIX: provide latestBuild
             downloadUrl: info['downloadUrl'],
             releaseNotes: info['releaseNotes'],
             forceUpdate: info['forceUpdate'] ?? false,
