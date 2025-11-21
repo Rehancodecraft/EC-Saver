@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "versionCode": 3,
   "apkUrl": "https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.0.2/ec-saver-v1.0.2-release.apk",
   "releaseNotes": "Enhanced Features & Bug Fixes\n- Improved auto-update system\n- Enhanced landing page\n- Better error handling\n- UI improvements\n- PDF export functionality",
