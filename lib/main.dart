@@ -68,14 +68,66 @@ class MyApp extends StatelessWidget {
         ),
       ),
       initialRoute: '/',
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/registration': (context) => const RegistrationScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/add-emergency': (context) => const EmergencyFormScreen(),
-        '/records': (context) => const RecordsScreen(),
-        '/about': (context) => const AboutScreen(),
-        '/feedback': (context) => const FeedbackScreen(),
+      onGenerateRoute: (settings) {
+        // Custom page transitions
+        Widget page;
+        switch (settings.name) {
+          case '/':
+            page = const SplashScreen();
+            break;
+          case '/registration':
+            page = const RegistrationScreen();
+            break;
+          case '/home':
+            page = const HomeScreen();
+            break;
+          case '/add-emergency':
+            page = const EmergencyFormScreen();
+            break;
+          case '/records':
+            page = const RecordsScreen();
+            break;
+          case '/about':
+            page = const AboutScreen();
+            break;
+          case '/feedback':
+            page = const FeedbackScreen();
+            break;
+          default:
+            page = const SplashScreen();
+        }
+
+        // No transition for splash screen
+        if (settings.name == '/') {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (context) => page,
+          );
+        }
+
+        // Custom transitions for all other pages
+        return PageRouteBuilder(
+          settings: settings,
+          pageBuilder: (context, animation, secondaryAnimation) => page,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOutCubic;
+
+            var tween = Tween(begin: begin, end: end).chain(
+              CurveTween(curve: curve),
+            );
+
+            return SlideTransition(
+              position: animation.drive(tween),
+              child: FadeTransition(
+                opacity: animation,
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        );
       },
     );
   }
