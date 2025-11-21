@@ -59,33 +59,28 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     try {
       final pkg = await PackageInfo.fromPlatform();
       final currentVersion = pkg.version;
-      final currentBuild = int.tryParse(pkg.buildNumber) ?? 1;
-      final prefs = await SharedPreferences.getInstance();
-      final lastAttempt = prefs.getString('dismissed_update_version');
+      print('DEBUG: Splash currentVersion=$currentVersion');
 
-      final updateInfo = await UpdateService.checkForUpdate();
-      if (updateInfo['updateAvailable'] == true && mounted) {
-        // Only skip if user dismissed this exact version/build
-        if (lastAttempt == '${updateInfo['latestVersion']}-${updateInfo['latestBuild']}') {
-          _checkRegistrationStatus();
-          return;
-        }
+      final info = await UpdateService.checkForUpdate(currentVersion: currentVersion);
+      print('DEBUG: UpdateService returned: $info');
+
+      if (info['updateAvailable'] == true && (info['downloadUrl'] ?? '').toString().isNotEmpty && mounted) {
         showDialog(
           context: context,
-          barrierDismissible: updateInfo['forceUpdate'] != true,
+          barrierDismissible: false,
           builder: (context) => UpdateDialog(
-            latestVersion: updateInfo['latestVersion'],
-            latestBuild: updateInfo['latestBuild'],
-            downloadUrl: updateInfo['downloadUrl'],
-            releaseNotes: updateInfo['releaseNotes'],
-            forceUpdate: updateInfo['forceUpdate'] ?? false,
+            latestVersion: info['latestVersion'],
+            downloadUrl: info['downloadUrl'],
+            releaseNotes: info['releaseNotes'],
+            forceUpdate: info['forceUpdate'] ?? false,
           ),
         );
         return;
       }
-    } catch (e) {
-      print('DEBUG: Update check failed: $e');
+    } catch (e, st) {
+      print('DEBUG: _checkForUpdatesAndProceed error: $e\n$st');
     }
+
     _checkRegistrationStatus();
   }
 

@@ -1,14 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_file/open_file.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 class UpdateService {
-  static const String versionJsonUrl = 'https://raw.githubusercontent.com/USERNAME/repo/main/version.json';
+  // Configure your repo here
+  static const String githubOwner = 'Rehancodecraft';
+  static const String githubRepo = 'EC-Saver';
+  static final String releasesLatestUrl =
+      'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
   // Compare semantic versions: returns 1 if a>b, -1 if a<b, 0 if equal
   static int compareVersions(String a, String b) {
@@ -24,43 +28,50 @@ class UpdateService {
     return 0;
   }
 
-  static Future<Map<String, dynamic>> checkForUpdate() async {
+  // NEW: robust check using GitHub Releases API and PackageInfo
+  static Future<Map<String, dynamic>> checkForUpdate({String? currentVersion}) async {
     try {
-      final pkg = await PackageInfo.fromPlatform();
-      final currentVersion = pkg.version;
-      final currentBuild = int.tryParse(pkg.buildNumber) ?? 1;
-
-      final response = await http.get(Uri.parse(versionJsonUrl));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final latestVersion = data['version'] ?? '';
-        final latestBuild = data['versionCode'] ?? 0;
-        final apkUrl = data['apkUrl'] ?? '';
-        final releaseNotes = data['releaseNotes'] ?? '';
-        final forceUpdate = data['forceUpdate'] ?? false;
-
-        // Prefer versionCode comparison if available
-        bool updateAvailable = false;
-        if (latestBuild > currentBuild) {
-          updateAvailable = true;
-        } else if (latestBuild == currentBuild) {
-          // fallback to version string compare
-          updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
-        }
-
-        return {
-          'updateAvailable': updateAvailable,
-          'latestVersion': latestVersion,
-          'latestBuild': latestBuild,
-          'downloadUrl': apkUrl,
-          'releaseNotes': releaseNotes,
-          'forceUpdate': forceUpdate,
-        };
+      if (currentVersion == null) {
+        final pkg = await PackageInfo.fromPlatform();
+        currentVersion = pkg.version;
       }
-      return {'updateAvailable': false};
-    } catch (e) {
-      print('Update check error: $e');
-      return {'updateAvailable': false};
+      print('DEBUG: currentVersion = $currentVersion');
+
+      final resp = await http.get(Uri.parse(releasesLatestUrl), headers: {'Accept': 'application/vnd.github.v3+json'});
+      if (resp.statusCode != 200) {
+        print('DEBUG: GitHub API failed status=${resp.statusCode}');
+        return {'updateAvailable': false};
+      }
+
+      final data = json.decode(resp.body) as Map<String, dynamic>;
+      final tagName = (data['tag_name'] ?? '').toString();
+      final latestVersion = tagName.replaceAll('v', '');
+      final assets = (data['assets'] as List<dynamic>? ) ?? [];
+      String apkUrl = '';
+      int apkSize = 0;
+      for (final a in assets) {
+        final name = (a['name'] ?? '').toString().toLowerCase();
+        if (name.endsWith('.apk')) {
+          apkUrl = a['browser_download_url'] ?? '';
+          apkSize = (a['size'] ?? 0) as int;
+          break;
+        }
+      }
+
+      print('DEBUG: latestVersion=$latestVersion apkUrl=$apkUrl apkSize=$apkSize');
+
+      final bool updateAvailable = (latestVersion.isNotEmpty && compareVersions(latestVersion, currentVersion) > 0);
+
+      return {
+        'updateAvailable': updateAvailable,
+        'latestVersion': latestVersion,
+        'downloadUrl': apkUrl,
+        'releaseNotes': data['body'] ?? '',
+        'apkSize': apkSize,
+      };
+    } catch (e, st) {
+      print('DEBUG: checkForUpdate error: $e\n$st');
+      return {'updateAvailable': false, 'error': e.toString()};
     }
   }
 
