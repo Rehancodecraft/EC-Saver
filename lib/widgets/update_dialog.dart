@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import 'package:flutter/services.dart';
 
 import '../services/update_service.dart';
-import '../utils/constants.dart';
 
 class UpdateDialog extends StatefulWidget {
   final String latestVersion;
@@ -86,8 +83,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => widget.forceUpdate ? false : true,
+    return PopScope(
+      canPop: !widget.forceUpdate,
       child: AlertDialog(
         title: Row(
           children: [

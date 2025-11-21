@@ -28,6 +28,32 @@ class UpdateService {
     return 0;
   }
 
+  // Extract version and build number from tag (format: v1.0.2+3 or 1.0.2+3)
+  static Map<String, dynamic> _parseVersionTag(String tag) {
+    // Remove 'v' prefix if present
+    String cleanTag = tag.replaceAll('v', '').trim();
+    
+    // Split by '+' to get version and build number
+    List<String> parts = cleanTag.split('+');
+    String version = parts[0].trim();
+    int buildNumber = 0;
+    
+    if (parts.length > 1) {
+      buildNumber = int.tryParse(parts[1].trim()) ?? 0;
+    }
+    
+    return {
+      'version': version,
+      'buildNumber': buildNumber,
+    };
+  }
+
+  // Check if release notes contain [FORCE_UPDATE] tag
+  static bool _isForceUpdate(String releaseNotes) {
+    return releaseNotes.toUpperCase().contains('[FORCE_UPDATE]') ||
+           releaseNotes.toUpperCase().contains('FORCE UPDATE');
+  }
+
   // NEW: robust check using GitHub Releases API and PackageInfo
   static Future<Map<String, dynamic>> checkForUpdate({String? currentVersion}) async {
     try {
@@ -35,30 +61,60 @@ class UpdateService {
         final pkg = await PackageInfo.fromPlatform();
         currentVersion = pkg.version;
       }
-      final currentBuild = int.tryParse((await PackageInfo.fromPlatform()).buildNumber) ?? 1;
+      final pkg = await PackageInfo.fromPlatform();
+      final currentBuild = int.tryParse(pkg.buildNumber) ?? 1;
 
       print('DEBUG: UpdateService - Checking update for version: $currentVersion, build: $currentBuild');
 
-      final response = await http.get(Uri.parse(releasesLatestUrl), headers: {'Accept': 'application/vnd.github.v3+json'});
+      final response = await http.get(
+        Uri.parse(releasesLatestUrl),
+        headers: {'Accept': 'application/vnd.github.v3+json'},
+      ).timeout(const Duration(seconds: 10));
+
       if (response.statusCode != 200) {
         print('DEBUG: GitHub API failed status=${response.statusCode}');
-        return {'updateAvailable': false};
+        return {'updateAvailable': false, 'error': 'Failed to check for updates'};
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;
       final tagName = (data['tag_name'] ?? '').toString();
-      final latestVersion = tagName.replaceAll('v', '');
-      final latestBuild = data['versionCode'] ?? 0;
-      final apkUrl = data['assets'] != null && (data['assets'] as List).isNotEmpty ? data['assets']![0]['browser_download_url'] : '';
-      final releaseNotes = data['body'] ?? '';
-      final forceUpdate = false; // GitHub API does not provide forceUpdate info
+      
+      // Parse version and build from tag (e.g., v1.0.2+3)
+      final parsed = _parseVersionTag(tagName);
+      final latestVersion = parsed['version'] as String;
+      final latestBuild = parsed['buildNumber'] as int;
+      
+      // Find APK asset (look for .apk file)
+      String apkUrl = '';
+      if (data['assets'] != null && (data['assets'] as List).isNotEmpty) {
+        for (var asset in data['assets'] as List) {
+          final assetName = (asset['name'] ?? '').toString().toLowerCase();
+          if (assetName.endsWith('.apk')) {
+            apkUrl = asset['browser_download_url'] ?? '';
+            break;
+          }
+        }
+        // Fallback to first asset if no APK found
+        if (apkUrl.isEmpty) {
+          apkUrl = data['assets']![0]['browser_download_url'] ?? '';
+        }
+      }
+      
+      final releaseNotes = (data['body'] ?? '').toString();
+      final forceUpdate = _isForceUpdate(releaseNotes);
 
       print('DEBUG: UpdateService - Latest version: $latestVersion, build: $latestBuild');
+      print('DEBUG: UpdateService - APK URL: $apkUrl');
 
-      // Use build number for comparison (more reliable)
-      bool updateAvailable = (latestBuild ?? 0) > currentBuild;
-      if (!updateAvailable && latestBuild == currentBuild) {
-        // Fallback to version string comparison
+      // Compare versions: first by build number, then by version string
+      bool updateAvailable = false;
+      if (latestBuild > 0 && currentBuild > 0) {
+        // Use build number for comparison (most reliable)
+        updateAvailable = latestBuild > currentBuild;
+      }
+      
+      // Fallback to version string comparison if build numbers are equal or missing
+      if (!updateAvailable) {
         updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
       }
 
@@ -72,9 +128,10 @@ class UpdateService {
         'releaseNotes': releaseNotes,
         'forceUpdate': forceUpdate,
       };
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('DEBUG: UpdateService - Error: $e');
-      return {'updateAvailable': false};
+      print('DEBUG: UpdateService - StackTrace: $stackTrace');
+      return {'updateAvailable': false, 'error': e.toString()};
     }
   }
 
@@ -82,15 +139,42 @@ class UpdateService {
     String downloadUrl,
     void Function(double) onProgress,
   ) async {
-    if (downloadUrl.isEmpty) throw Exception('Empty download URL');
-    if (Platform.isAndroid) {
-      final storageStatus = await Permission.storage.request();
-      if (!storageStatus.isGranted) throw Exception('Storage permission denied');
+    if (downloadUrl.isEmpty) {
+      throw Exception('Empty download URL');
     }
 
+    if (!Platform.isAndroid) {
+      throw Exception('Auto-update is only supported on Android');
+    }
+
+    // Request install permission for Android 8.0+
+    final installPermission = await Permission.requestInstallPackages.request();
+    if (!installPermission.isGranted) {
+      // For Android 11+, we can still try to install via FileProvider
+      print('DEBUG: Install permission not granted, will try FileProvider');
+    }
+
+    // Request storage permission for older Android versions
+    if (await Permission.storage.isDenied) {
+      final storageStatus = await Permission.storage.request();
+      if (!storageStatus.isGranted && !storageStatus.isPermanentlyDenied) {
+        print('DEBUG: Storage permission not granted, will try app-specific directory');
+      }
+    }
+
+    // Download APK
     final uri = Uri.parse(downloadUrl);
     final client = http.Client();
-    final response = await client.send(http.Request('GET', uri));
+    http.StreamedResponse response;
+    
+    try {
+      response = await client.send(http.Request('GET', uri))
+          .timeout(const Duration(minutes: 10));
+    } catch (e) {
+      client.close();
+      throw Exception('Failed to download APK: $e');
+    }
+
     if (response.statusCode != 200) {
       client.close();
       throw Exception('Failed to download APK: HTTP ${response.statusCode}');
@@ -98,23 +182,25 @@ class UpdateService {
 
     final contentLength = response.contentLength ?? 0;
     int received = 0;
-    Directory dir;
-    if (Platform.isAndroid) {
-      final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
-      dir = (dirs != null && dirs.isNotEmpty) ? dirs.first : Directory('/storage/emulated/0/Download');
-    } else {
-      dir = await getApplicationDocumentsDirectory();
-    }
-    if (!await dir.exists()) await dir.create(recursive: true);
 
-    final filePath = p.join(dir.path, 'ec-saver-update.apk');
+    // Use app-specific external directory (works on all Android versions)
+    final appDir = await getApplicationDocumentsDirectory();
+    final updateDir = Directory(p.join(appDir.path, 'updates'));
+    if (!await updateDir.exists()) {
+      await updateDir.create(recursive: true);
+    }
+
+    final filePath = p.join(updateDir.path, 'ec-saver-update.apk');
     final file = File(filePath);
+    
+    // Delete old update file if exists
     if (await file.exists()) {
       try {
         await file.delete();
       } catch (_) {}
     }
 
+    // Download with progress tracking
     final sink = file.openWrite();
     try {
       await for (final chunk in response.stream) {
@@ -123,7 +209,8 @@ class UpdateService {
         if (contentLength > 0) {
           onProgress(received / contentLength);
         } else {
-          onProgress(0);
+          // If content length is unknown, show indeterminate progress
+          onProgress(received > 0 ? 0.5 : 0);
         }
       }
     } finally {
@@ -131,11 +218,28 @@ class UpdateService {
       client.close();
     }
 
+    // Verify download
     if (!await file.exists() || await file.length() == 0) {
-      throw Exception('Downloaded file is missing or empty after write.');
+      throw Exception('Downloaded file is missing or empty');
     }
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    await OpenFile.open(filePath);
+    print('DEBUG: APK downloaded successfully to: $filePath');
+    print('DEBUG: File size: ${await file.length()} bytes');
+
+    // Small delay to ensure file is fully written
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Open file for installation
+    // OpenFile will use FileProvider automatically on Android 7.0+
+    final result = await OpenFile.open(filePath);
+    
+    // Check result - ResultType.done means success
+    if (result.type != ResultType.done && result.type != ResultType.noAppToOpen) {
+      print('DEBUG: OpenFile result: ${result.type}, message: ${result.message}');
+      // Even if result is not "done", the file might still open
+      // Android package installer should handle it
+    }
+
+    print('DEBUG: Installer opened successfully');
   }
 }

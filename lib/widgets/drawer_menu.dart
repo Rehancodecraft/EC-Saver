@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/database_service.dart';
 import '../models/user_profile.dart';
+import '../services/update_service.dart';
+import '../widgets/update_dialog.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class DrawerMenu extends StatefulWidget {
   final String currentRoute;
@@ -192,6 +195,18 @@ class _DrawerMenuState extends State<DrawerMenu> {
                     }
                   },
                 ),
+
+                const Divider(),
+
+                // Check for Updates
+                ListTile(
+                  leading: const Icon(Icons.system_update, color: AppColors.primaryRed),
+                  title: const Text('Check for Updates'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _checkForUpdates(context);
+                  },
+                ),
               ],
             ),
           ),
@@ -227,5 +242,64 @@ class _DrawerMenuState extends State<DrawerMenu> {
         ],
       ),
     );
+  }
+
+  Future<void> _checkForUpdates(BuildContext context) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          color: AppColors.primaryRed,
+        ),
+      ),
+    );
+
+    try {
+      final pkg = await PackageInfo.fromPlatform();
+      final currentVersion = pkg.version;
+      
+      final updateInfo = await UpdateService.checkForUpdate(currentVersion: currentVersion);
+      
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      if (updateInfo['updateAvailable'] == true && 
+          (updateInfo['downloadUrl'] ?? '').toString().isNotEmpty) {
+        // Show update dialog
+        showDialog(
+          context: context,
+          barrierDismissible: !(updateInfo['forceUpdate'] ?? false),
+          builder: (context) => UpdateDialog(
+            latestVersion: updateInfo['latestVersion'],
+            latestBuild: updateInfo['latestBuild'] ?? 0,
+            downloadUrl: updateInfo['downloadUrl'],
+            releaseNotes: updateInfo['releaseNotes'] ?? 'New version available',
+            forceUpdate: updateInfo['forceUpdate'] ?? false,
+          ),
+        );
+      } else {
+        // Show "up to date" message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You are using the latest version! ✅'),
+            backgroundColor: AppColors.secondaryGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error checking for updates: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }
