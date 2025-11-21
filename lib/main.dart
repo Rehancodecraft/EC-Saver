@@ -19,7 +19,8 @@ Future<void> main() async {
     url: 'https://ssddnidpcjcbajxyhjgg.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzZGRuaWRwY2pjYmFqeHloamdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NTQ3MjksImV4cCI6MjA3OTAzMDcyOX0.UcAIUQB5cXnkX5Yc75qmcm_R8_-JdGB-qY6XrfiYbTU',
   ).catchError((e) {
-    print('DEBUG: Supabase init error: $e');
+    debugPrint('DEBUG: Supabase init error: $e');
+    return Supabase.instance; // Return existing instance or handle error
   });
   
   runApp(const MyApp()); // Don't wait for Supabase

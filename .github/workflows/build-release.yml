@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build APK
@@ -14,7 +17,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+        
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -31,23 +34,51 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       
+      - name: Verify Flutter setup
+        run: flutter doctor -v
+      
+      - name: Accept Android licenses
+        run: |
+          yes | flutter doctor --android-licenses || echo "License acceptance completed or skipped"
+        continue-on-error: true
+      
+      - name: Clean previous builds
+        run: flutter clean
+        continue-on-error: true
+      
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
       
-      - name: Build APK
-        run: flutter build apk --release --no-tree-shake-icons
-      
       - name: Get version from pubspec
         id: version
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1)
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1 | tr -d ' ')
+          BUILD=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f2 | tr -d ' ')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
+          echo "BUILD=$BUILD" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION (build $BUILD)"
+      
+      - name: Build APK
+        run: |
+          flutter build apk --release --no-tree-shake-icons
+        env:
+          FLUTTER_BUILD_MODE: release
+      
+      - name: Verify APK exists
+        run: |
+          if [ ! -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            echo "❌ APK file not found!"
+            ls -la build/app/outputs/flutter-apk/
+            exit 1
+          fi
+          echo "✅ APK file found"
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
       
       - name: Rename APK
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}.apk
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk
+          echo "✅ APK renamed to ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk"
       
       - name: Create Release
         id: create_release
@@ -62,12 +93,13 @@ jobs:
             - Enhanced features and improvements
             - Updated all 46 districts with complete tehsil data
             - Improved UI/UX throughout the app
+            - Professional animations and transitions
             - Better error handling and stability
             - PDF export functionality
             - Auto-update notifications
             
             ### 📥 Installation
-            1. Download `ec-saver-v${{ steps.version.outputs.VERSION }}.apk` below
+            1. Download `ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk` below
             2. Enable "Install from Unknown Sources" on your Android device
             3. Install and enjoy!
             
@@ -84,6 +116,13 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}.apk
+            build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload Release Artifacts
+        if: steps.create_release.outputs.id != ''
+        run: |
+          echo "✅ Release created successfully!"
+          echo "Release ID: ${{ steps.create_release.outputs.id }}"
+          echo "APK uploaded: ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk"
