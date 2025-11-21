@@ -765,29 +765,27 @@
     </footer>
 
     <script>
-        // VERIFIED: Single download implementation
         let latestApkUrl = null;
         let latestApkName = 'ec-saver.apk';
-        let latestVersion = 'v1.0.2';
-        let isDownloading = false;
 
         async function fetchLatestRelease() {
             try {
-                console.log('🔍 Fetching latest release...');
+                console.log('🔍 Fetching latest release from GitHub...');
                 
                 const response = await fetch('https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest');
+                console.log('📡 Response status:', response.status);
                 
                 if (!response.ok) {
-                    throw new Error(`GitHub API returned ${response.status}`);
+                    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                console.log('✅ Release data:', data.tag_name);
+                console.log('✅ Release data received:', data);
                 
                 const version = data.tag_name || 'v1.0.2';
                 const apkAssets = data.assets.filter(asset => asset.name.endsWith('.apk'));
                 
-                console.log(`📦 Found ${apkAssets.length} APK(s):`, apkAssets.map(a => a.name));
+                console.log(`📦 Found ${apkAssets.length} APK assets:`, apkAssets.map(a => a.name));
                 
                 // Update version displays
                 document.getElementById('version').textContent = version;
@@ -810,8 +808,25 @@
                     apkName = apkAssets[0].name;
                     console.log('✅ Using first APK:', apkName);
                 } else {
-                    console.warn('⚠️ No APK found in release');
+                    console.warn('⚠️ No APK found in release assets');
                     apkUrl = null;
+                }
+                
+                latestApkUrl = apkUrl;
+                latestApkName = apkName;
+                
+                console.log('🔗 Final APK URL:', latestApkUrl);
+                
+                // Update download button
+                const downloadBtn = document.getElementById('androidDownload');
+                if (latestApkUrl) {
+                    downloadBtn.href = latestApkUrl;
+                    downloadBtn.setAttribute('download', latestApkName);
+                    console.log('✅ Download link configured');
+                } else {
+                    console.warn('⚠️ No APK URL found, using releases page');
+                    downloadBtn.href = `https://github.com/Rehancodecraft/EC-Saver/releases/latest`;
+                    downloadBtn.removeAttribute('download');
                 }
                 
             } catch (error) {
@@ -824,22 +839,19 @@
             }
         }
 
-        // FIXED: Mobile-friendly download (no redirect)
+        // Download function with better error handling
         function initiateDownload() {
-            if (isDownloading) {
-                console.log('⚠️ Download already in progress');
-                return;
-            }
+            console.log('🚀 Download initiated');
+            console.log('Current APK URL:', latestApkUrl);
             
             if (!latestApkUrl) {
                 console.error('❌ No download URL available');
-                alert('Download link not ready. Please try again.');
+                alert('Download link not ready. Please try again. Check console for details.');
+                // Try to refetch
+                fetchLatestRelease();
                 return;
             }
 
-            isDownloading = true;
-            console.log('🚀 Starting download from:', latestApkUrl);
-            
             const overlay = document.getElementById('downloadOverlay');
             const statusText = document.getElementById('downloadStatus');
             const downloadBtn = document.getElementById('androidDownload');
@@ -848,63 +860,41 @@
             downloadBtn.disabled = true;
             statusText.textContent = `Downloading ${latestApkName}...`;
             
-            // Detect if mobile
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            console.log('📱 Is Mobile:', isMobile);
-            
+            // Create invisible link and trigger download
             setTimeout(() => {
-                if (isMobile) {
-                    // MOBILE: Use location.href to trigger download (prevents redirect)
-                    console.log('📱 Using mobile download method');
-                    
-                    // Create hidden iframe to prevent navigation
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.style.width = '0';
-                    iframe.style.height = '0';
-                    document.body.appendChild(iframe);
-                    
-                    // Set iframe source to APK URL
-                    iframe.src = latestApkUrl;
-                    
-                    console.log('✅ Download triggered (mobile)');
-                    
-                    // Clean up iframe after delay
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                    }, 3000);
-                    
-                } else {
-                    // DESKTOP: Use link.click() method
-                    console.log('🖥️ Using desktop download method');
+                try {
                     const link = document.createElement('a');
                     link.href = latestApkUrl;
                     link.download = latestApkName;
                     link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
+                    document.body.removeChild(link);
+                    
+                    console.log('✅ Download triggered');
+                    
+                    statusText.textContent = 'Download started! Check your downloads folder.';
                     
                     setTimeout(() => {
-                        document.body.removeChild(link);
-                    }, 100);
+                        overlay.classList.remove('active');
+                        downloadBtn.disabled = false;
+                    }, 2000);
                     
-                    console.log('✅ Download triggered (desktop)');
+                } catch (error) {
+                    console.error('❌ Download error:', error);
+                    statusText.textContent = 'Download failed. Try again.';
+                    
+                    setTimeout(() => {
+                        overlay.classList.remove('active');
+                        downloadBtn.disabled = false;
+                    }, 2000);
                 }
-                
-                statusText.textContent = 'Download started! Check your downloads folder.';
-                
-                setTimeout(() => {
-                    overlay.classList.remove('active');
-                    downloadBtn.disabled = false;
-                    isDownloading = false;
-                }, 2000);
-                
             }, 300);
         }
 
         // Initialize on page load
         window.addEventListener('DOMContentLoaded', () => {
-            console.log('🌐 Page loaded');
+            console.log('🌐 Page loaded, fetching release info...');
             fetchLatestRelease();
         });
 
