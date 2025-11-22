@@ -1251,13 +1251,14 @@
                     latestApkName = `ec-saver-${tagName}-release.apk`;
                     console.log('🔄 Using fallback URL:', latestApkUrl);
                 } else {
-                    // Use direct download URL (not browser_download_url to avoid redirects)
+                    // Use direct download URL format - NO redirects
                     const tagName = data.tag_name;
                     const apkName = apkAssets[0].name;
-                    // Use the direct download URL format
+                    // Direct download URL - stays on same page
                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/${apkName}`;
                     latestApkName = apkName;
                     console.log('✅ Direct APK URL set:', latestApkUrl);
+                    console.log('📦 APK Name:', latestApkName);
                 }
                 
                 // Update UI
@@ -1310,47 +1311,52 @@
             downloadBtn.disabled = true;
             statusText.textContent = `Downloading ${latestApkName}...`;
             
-            // Create a temporary link for direct download
+            // Direct download - no redirects, stays on same page
             setTimeout(() => {
                 try {
-                    // Create hidden iframe for direct download (works better than link.click)
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = latestApkUrl;
-                    document.body.appendChild(iframe);
-                    
-                    // Also try direct link method as fallback
+                    // Method 1: Create download link and trigger click
                     const link = document.createElement('a');
                     link.href = latestApkUrl;
                     link.download = latestApkName;
-                    link.target = '_blank';
-                    link.rel = 'noopener noreferrer';
+                    link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
-                    document.body.removeChild(link);
+                    
+                    // Clean up immediately
+                    setTimeout(() => {
+                        if (link.parentNode) {
+                            document.body.removeChild(link);
+                        }
+                    }, 100);
                     
                     statusText.textContent = 'Download started! Check your downloads folder.';
                     
-                    // Clean up iframe after a delay
-                    setTimeout(() => {
-                        if (iframe.parentNode) {
-                            document.body.removeChild(iframe);
-                        }
-                    }, 5000);
-                    
                 } catch (error) {
                     console.error('❌ Download error:', error);
-                    // Fallback: open in new window
-                    window.open(latestApkUrl, '_blank');
-                    statusText.textContent = 'Opening download page...';
+                    // Fallback: Use fetch to download
+                    fetch(latestApkUrl)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = latestApkName;
+                            link.click();
+                            window.URL.revokeObjectURL(url);
+                            statusText.textContent = 'Download started!';
+                        })
+                        .catch(err => {
+                            console.error('Fetch download failed:', err);
+                            statusText.textContent = 'Please try again or visit GitHub releases.';
+                        });
                 }
                 
                 setTimeout(() => {
                     overlay.classList.remove('active');
                     downloadBtn.disabled = false;
                     downloadInProgress = false;
-                }, 2500);
-            }, 500);
+                }, 2000);
+            }, 300);
         }
 
         // Initialize on page load

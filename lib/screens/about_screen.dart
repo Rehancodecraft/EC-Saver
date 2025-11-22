@@ -23,9 +23,9 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
     super.initState();
     _loadVersionInfo();
     
-    // Animation setup
+    // Animation setup - optimized
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 300), // Reduced from 800ms
       vsync: this,
     );
     
@@ -36,10 +36,10 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
       ),
     );
     
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate( // Reduced scale
       CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeOutBack,
+        curve: Curves.easeOut, // Simpler curve
       ),
     );
     
@@ -325,18 +325,9 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
   }
 
   Widget _buildFeatureItem(IconData icon, String title, String description, Color color) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOut,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 20 * (1 - value)),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Card(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -391,10 +382,6 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                   ),
                 ),
               ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

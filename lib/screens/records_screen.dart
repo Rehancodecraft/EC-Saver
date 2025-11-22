@@ -57,12 +57,32 @@ class _RecordsScreenState extends State<RecordsScreen> {
       final dbService = DatabaseService();
       List<Emergency> emergencies;
 
+      // Get all emergencies first
       if (_searchController.text.isNotEmpty) {
         emergencies = await dbService.searchEmergencies(_searchController.text);
       } else if (_selectedFilter != null) {
         emergencies = await dbService.filterEmergenciesByType(_selectedFilter!);
       } else {
         emergencies = await dbService.getAllEmergencies();
+      }
+
+      // Apply date filter if selected
+      if (_selectedDate != null) {
+        final selectedDate = _selectedDate!;
+        final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+        final endOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 23, 59, 59);
+        emergencies = emergencies.where((e) {
+          return e.emergencyDate.isAfter(startOfDay.subtract(const Duration(seconds: 1))) &&
+                 e.emergencyDate.isBefore(endOfDay.add(const Duration(seconds: 1)));
+        }).toList();
+      }
+
+      // Apply month filter if selected
+      if (_selectedMonth != null) {
+        final monthYear = _selectedMonth!;
+        emergencies = emergencies.where((e) {
+          return e.getMonthYear() == monthYear;
+        }).toList();
       }
 
       // Group by month
@@ -102,7 +122,27 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Future<void> _selectMonth() async {
-    if (_availableMonths.isEmpty) {
+    // Load all records first to get available months
+    final dbService = DatabaseService();
+    final allEmergencies = await dbService.getAllEmergencies();
+    
+    // Get unique months
+    final Set<String> uniqueMonths = {};
+    for (final emergency in allEmergencies) {
+      uniqueMonths.add(emergency.getMonthYear());
+    }
+    
+    final availableMonths = uniqueMonths.toList()..sort((a, b) {
+      try {
+        final dateA = DateFormat('MMMM yyyy').parse(a);
+        final dateB = DateFormat('MMMM yyyy').parse(b);
+        return dateB.compareTo(dateA); // Newest first
+      } catch (e) {
+        return b.compareTo(a);
+      }
+    });
+
+    if (availableMonths.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No months available')),
       );
@@ -117,7 +157,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
           width: double.maxFinite,
           child: ListView.builder(
             shrinkWrap: true,
-            itemCount: _availableMonths.length + 1,
+            itemCount: availableMonths.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
                 return ListTile(
@@ -125,9 +165,9 @@ class _RecordsScreenState extends State<RecordsScreen> {
                   onTap: () => Navigator.pop(context, 'all'),
                 );
               }
-              final month = _availableMonths[index - 1];
+              final month = availableMonths[index - 1];
               return ListTile(
-                title: Text(_formatMonthYear(month)),
+                title: Text(month),
                 onTap: () => Navigator.pop(context, month),
               );
             },
@@ -139,6 +179,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
     if (selected != null) {
       setState(() {
         _selectedMonth = selected == 'all' ? null : selected;
+        _selectedDate = null; // Clear date filter when month is selected
       });
       _loadRecords();
     }
@@ -168,6 +209,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
+        _selectedMonth = null; // Clear month filter when date is selected
       });
       _loadRecords();
     }

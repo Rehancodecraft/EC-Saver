@@ -28,14 +28,14 @@ class _EmergencyCardState extends State<EmergencyCard> with SingleTickerProvider
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: Duration(milliseconds: 300 + (widget.index * 50)),
+      duration: const Duration(milliseconds: 200), // Reduced from 300+
       vsync: this,
     );
     
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate( // Reduced scale
       CurvedAnimation(
         parent: _controller,
-        curve: Curves.easeOutBack,
+        curve: Curves.easeOut, // Simpler curve
       ),
     );
     
@@ -64,11 +64,7 @@ class _EmergencyCardState extends State<EmergencyCard> with SingleTickerProvider
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHovered = true),
           onExit: (_) => setState(() => _isHovered = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-            child: Card(
+          child: Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               elevation: _isHovered ? 8 : 2,
               shape: RoundedRectangleBorder(
@@ -183,7 +179,6 @@ class _EmergencyCardState extends State<EmergencyCard> with SingleTickerProvider
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
