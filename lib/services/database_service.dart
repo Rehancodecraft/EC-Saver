@@ -91,16 +91,36 @@ class DatabaseService {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    print('DEBUG: Database upgrade from version $oldVersion to $newVersion');
     if (oldVersion < 2) {
+      print('DEBUG: Migrating database from version $oldVersion to 2 - Adding off_days table');
       // Add off_days table for version 2
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS off_days(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          off_date TEXT NOT NULL UNIQUE,
-          notes TEXT,
-          created_at TEXT NOT NULL
-        )
-      ''');
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS off_days(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            off_date TEXT NOT NULL UNIQUE,
+            notes TEXT,
+            created_at TEXT NOT NULL
+          )
+        ''');
+        print('DEBUG: Successfully created off_days table');
+        
+        // Verify the table was created
+        final tables = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='off_days'"
+        );
+        if (tables.isNotEmpty) {
+          print('DEBUG: Verified off_days table exists');
+        } else {
+          print('ERROR: off_days table was not created!');
+        }
+      } catch (e) {
+        print('ERROR: Failed to create off_days table: $e');
+        rethrow;
+      }
+    } else {
+      print('DEBUG: Database already at version $oldVersion, no migration needed');
     }
   }
 
