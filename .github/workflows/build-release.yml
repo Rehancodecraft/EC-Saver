@@ -39,7 +39,17 @@ jobs:
           echo "🔧 Fixing Gradle compatibility issues..."
           
           # Wait a moment for pub cache to be fully written
-          sleep 2
+          sleep 3
+          
+          # Use the fix_plugins.sh script if it exists
+          if [ -f "android/fix_plugins.sh" ]; then
+            echo "📜 Using fix_plugins.sh script..."
+            chmod +x android/fix_plugins.sh
+            bash android/fix_plugins.sh
+          fi
+          
+          # Also do inline fix as backup
+          echo "🔍 Searching for app_links plugin..."
           
           # Find app_links plugin and fix it (try multiple locations)
           APP_LINKS_DIR=""
@@ -67,14 +77,18 @@ jobs:
             echo "🔍 Found app_links at: $BUILD_GRADLE"
             
             if [ -f "$BUILD_GRADLE" ]; then
-              # Backup
-              cp "$BUILD_GRADLE" "$BUILD_GRADLE.bak"
-              
-              echo "📄 Original build.gradle content:"
-              head -20 "$BUILD_GRADLE"
-              
-              # Create a completely new build.gradle that's compatible
-              cat > "$BUILD_GRADLE" << 'EOF'
+              # Check if already fixed
+              if grep -q "8.9.1" "$BUILD_GRADLE" 2>/dev/null; then
+                echo "✅ app_links plugin already fixed (contains AGP 8.9.1)"
+              else
+                # Backup
+                cp "$BUILD_GRADLE" "$BUILD_GRADLE.bak"
+                
+                echo "📄 Original build.gradle content:"
+                head -20 "$BUILD_GRADLE"
+                
+                # Create a completely new build.gradle that's compatible
+                cat > "$BUILD_GRADLE" << 'EOF'
 group 'com.llfbandit.app_links'
 version '1.0-SNAPSHOT'
 
@@ -126,16 +140,18 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }
 EOF
-              
-              echo "✅ Replaced app_links build.gradle with compatible version"
-              echo "📄 New build.gradle content (first 20 lines):"
-              head -20 "$BUILD_GRADLE"
-              
-              # Verify the file was written
-              if [ -f "$BUILD_GRADLE" ] && grep -q "8.9.1" "$BUILD_GRADLE"; then
-                echo "✅ Verification: build.gradle contains AGP 8.9.1"
-              else
-                echo "⚠️  WARNING: build.gradle might not have been updated correctly"
+                
+                echo "✅ Replaced app_links build.gradle with compatible version"
+                
+                # Verify the file was written
+                if [ -f "$BUILD_GRADLE" ] && grep -q "8.9.1" "$BUILD_GRADLE"; then
+                  echo "✅ Verification: build.gradle contains AGP 8.9.1"
+                  echo "📄 New build.gradle content (first 20 lines):"
+                  head -20 "$BUILD_GRADLE"
+                else
+                  echo "❌ ERROR: build.gradle was not updated correctly!"
+                  exit 1
+                fi
               fi
             else
               echo "⚠️  build.gradle not found at: $BUILD_GRADLE"
@@ -143,8 +159,9 @@ EOF
           else
             echo "⚠️  app_links plugin not found in pub cache"
             echo "🔍 Searching all possible locations..."
-            find . -type d -name "*app_links*" 2>/dev/null | head -5
+            find . -type d -name "*app_links*" 2>/dev/null | head -5 || true
             find ~/.pub-cache -type d -name "*app_links*" 2>/dev/null | head -5 || true
+            echo "⚠️  Continuing build anyway - plugin might not be needed or will be downloaded during build"
           fi
           
           echo "✅ Plugin compatibility fixes completed"
@@ -156,6 +173,16 @@ EOF
         run: |
           yes | flutter doctor --android-licenses || echo "License acceptance completed or skipped"
         continue-on-error: true
+      
+      - name: Configure Gradle memory
+        run: |
+          echo "⚙️  Configuring Gradle memory settings..."
+          mkdir -p android
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
+          echo "org.gradle.daemon=true" >> android/gradle.properties
+          echo "org.gradle.parallel=true" >> android/gradle.properties
+          echo "org.gradle.caching=true" >> android/gradle.properties
+          echo "✅ Gradle configuration updated"
       
       - name: Clean previous builds
         run: flutter clean
@@ -281,10 +308,25 @@ EOF
       - name: Build APK
         run: |
           echo "🏗️  Building APK with version ${{ steps.version.outputs.VERSION }}+${{ steps.version.outputs.BUILD }}"
-          flutter build apk --release --no-tree-shake-icons
+          echo "📋 Flutter version:"
+          flutter --version
+          echo "📋 Dart version:"
+          dart --version
+          echo "📋 Java version:"
+          java -version
+          
+          # Build with verbose output for debugging
+          flutter build apk --release --no-tree-shake-icons --verbose 2>&1 | tee build.log || {
+            echo "❌ Build failed! Last 50 lines of build log:"
+            tail -50 build.log || true
+            echo "❌ Full error output:"
+            cat build.log | grep -i "error\|fail\|exception" | tail -20 || true
+            exit 1
+          }
           echo "✅ Build completed"
         env:
           FLUTTER_BUILD_MODE: release
+          GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
       
       - name: Verify APK exists and check version
         run: |
