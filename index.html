@@ -296,7 +296,7 @@
         
         <div class="version-badge" id="versionBadge">Version: Loading...</div>
         
-        <button class="download-button" id="downloadButton" onclick="initiateDownload()">
+        <button class="download-button" id="downloadButton" onclick="initiateDownload()" type="button">
             <span class="loading-spinner"></span>
             <span class="download-text">
                 <span class="download-icon">📥</span>
@@ -431,8 +431,8 @@
             }
         }
 
-        // Direct download function - Mobile optimized (NO REDIRECT, NO CORS)
-        function initiateDownload() {
+        // Direct download function - Mobile optimized (NO REDIRECT, STAYS ON PAGE)
+        async function initiateDownload() {
             if (downloadInProgress || !latestApkUrl) {
                 if (!latestApkUrl) {
                     alert('Download link not ready. Please wait a moment and try again.');
@@ -447,110 +447,131 @@
             downloadBtn.classList.add('loading');
             downloadBtn.disabled = true;
 
-            // Mobile-optimized: Use XMLHttpRequest with blob (bypasses CORS, follows redirects)
-            // XHR automatically follows redirects, so we can use the GitHub URL directly
-            // This is the most reliable method for mobile browsers
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', latestApkUrl, true);
-            xhr.responseType = 'blob';
-            // XHR automatically follows redirects, so no need to handle 302s manually
-            
-            xhr.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    console.log('Download progress:', percentComplete.toFixed(1) + '%');
-                }
-            };
-            
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    const blob = xhr.response;
-                    
-                    // Verify it's an APK (check size and type)
-                    if (blob.size > 10000) { // APK should be at least 10KB
-                        // Create blob URL
-                        const blobUrl = window.URL.createObjectURL(blob);
-                        
-                        // Create download link
-                        const link = document.createElement('a');
-                        link.href = blobUrl;
-                        link.download = latestApkName;
-                        link.style.display = 'none';
-                        document.body.appendChild(link);
-                        
-                        // Trigger download
-                        link.click();
-                        
-                        // Clean up
-                        setTimeout(() => {
-                            if (link.parentNode) {
-                                document.body.removeChild(link);
-                            }
-                            window.URL.revokeObjectURL(blobUrl);
-                        }, 1000);
-                        
-                        // Reset button
-                        downloadBtn.classList.remove('loading');
-                        downloadBtn.disabled = false;
-                        downloadInProgress = false;
-                    } else {
-                        console.error('Downloaded file too small, might be HTML');
-                        fallbackDirectDownload();
-                    }
-                } else {
-                    console.error('XHR failed:', xhr.status);
-                    fallbackDirectDownload();
-                }
-            };
-            
-            xhr.onerror = function() {
-                console.error('XHR network error');
-                fallbackDirectDownload();
-            };
-            
-            xhr.ontimeout = function() {
-                console.error('XHR timeout');
-                fallbackDirectDownload();
-            };
-            
-            xhr.timeout = 120000; // 2 minute timeout for large files
-            
-            // Start download
+            // Method 1: Fetch API with blob (BEST for mobile - no redirects, stays on page)
             try {
-                xhr.send();
-            } catch (e) {
-                console.error('XHR send error:', e);
-                fallbackDirectDownload();
-            }
-            
-            // Fallback: Direct link method (if XHR fails)
-            function fallbackDirectDownload() {
-                console.log('Using fallback direct download method');
-                console.log('Fallback URL:', latestApkUrl);
-                
-                // For fallback, we need to open the download URL directly
-                // GitHub's releases/download URLs redirect, but we can use window.location
-                // or create a form submission to force download
-                try {
-                    // Try using window.open first (works better on mobile)
-                    const newWindow = window.open(latestApkUrl, '_blank');
-                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-                        // If popup blocked, use direct navigation
-                        window.location.href = latestApkUrl;
-                    }
-                } catch (e) {
-                    console.error('Fallback download error:', e);
-                    // Last resort: direct navigation
-                    window.location.href = latestApkUrl;
+                console.log('📥 Using Fetch API to download...');
+                const response = await fetch(latestApkUrl, {
+                    method: 'GET',
+                    redirect: 'follow', // Follow redirects automatically
+                    cache: 'no-cache'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+
+                // Get the blob
+                const blob = await response.blob();
+                console.log('✅ Blob received, size:', blob.size, 'bytes');
+
+                // Verify it's an APK (check size - should be > 10MB for our app)
+                if (blob.size > 10000000) { // At least 10MB
+                    // Create blob URL
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    
+                    // Create download link
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = latestApkName;
+                    link.style.display = 'none';
+                    link.setAttribute('download', latestApkName);
+                    document.body.appendChild(link);
+                    
+                    // Trigger download (stays on same page, no redirect)
+                    link.click();
+                    console.log('✅ Download triggered via blob URL');
+                    
+                    // Clean up
+                    setTimeout(() => {
+                        if (link.parentNode) {
+                            document.body.removeChild(link);
+                        }
+                        window.URL.revokeObjectURL(blobUrl);
+                    }, 1000);
+                    
+                    // Reset button
+                    downloadBtn.classList.remove('loading');
+                    downloadBtn.disabled = false;
+                    downloadInProgress = false;
+                    return; // Success!
+                } else {
+                    console.error('❌ Downloaded file too small:', blob.size, 'bytes (expected > 10MB)');
+                    throw new Error('Downloaded file is too small, might be HTML error page');
+                }
+            } catch (fetchError) {
+                console.error('❌ Fetch API failed:', fetchError);
+                console.log('🔄 Trying fallback method...');
+                // Fall through to fallback method
+            }
+
+            // Method 2: Fallback - Hidden iframe (NO REDIRECT, stays on page)
+            try {
+                console.log('📥 Using hidden iframe fallback...');
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                iframe.src = latestApkUrl;
                 
-                // Reset button after a delay
+                // Add to body
+                document.body.appendChild(iframe);
+                
+                // Remove iframe after download starts (or timeout)
+                setTimeout(() => {
+                    if (iframe.parentNode) {
+                        document.body.removeChild(iframe);
+                    }
+                }, 5000);
+                
+                // Reset button
                 setTimeout(() => {
                     downloadBtn.classList.remove('loading');
                     downloadBtn.disabled = false;
                     downloadInProgress = false;
                 }, 2000);
+                
+                console.log('✅ Iframe download initiated');
+                return;
+            } catch (iframeError) {
+                console.error('❌ Iframe method failed:', iframeError);
             }
+
+            // Method 3: Last resort - Form submission (minimal redirect risk)
+            try {
+                console.log('📥 Using form submission fallback...');
+                const form = document.createElement('form');
+                form.method = 'GET';
+                form.action = latestApkUrl;
+                form.target = '_blank';
+                form.style.display = 'none';
+                document.body.appendChild(form);
+                form.submit();
+                
+                setTimeout(() => {
+                    if (form.parentNode) {
+                        document.body.removeChild(form);
+                    }
+                }, 1000);
+                
+                // Reset button
+                setTimeout(() => {
+                    downloadBtn.classList.remove('loading');
+                    downloadBtn.disabled = false;
+                    downloadInProgress = false;
+                }, 2000);
+                
+                console.log('✅ Form submission initiated');
+                return;
+            } catch (formError) {
+                console.error('❌ Form submission failed:', formError);
+            }
+
+            // If all methods fail, show error
+            alert('Download failed. Please check your internet connection and try again.\n\nError: Unable to initiate download.');
+            downloadBtn.classList.remove('loading');
+            downloadBtn.disabled = false;
+            downloadInProgress = false;
         }
 
         // Initialize on page load
