@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/user_profile.dart';
 import '../models/emergency.dart';
 import '../models/monthly_stats.dart';
+import '../models/off_day.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -24,8 +25,9 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDb,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -77,6 +79,29 @@ class DatabaseService {
         created_at TEXT NOT NULL
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE off_days(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        off_date TEXT NOT NULL UNIQUE,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add off_days table for version 2
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS off_days(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          off_date TEXT NOT NULL UNIQUE,
+          notes TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
   }
 
   // User Profile Methods
@@ -253,6 +278,65 @@ class DatabaseService {
       'message': message,
       'created_at': DateTime.now().toIso8601String(),
     });
+  }
+
+  // Off Day Methods
+  Future<int> saveOffDay(OffDay offDay) async {
+    final db = await database;
+    try {
+      return await db.insert(
+        'off_days',
+        offDay.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e) {
+      print('DEBUG: saveOffDay error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<OffDay>> getOffDays() async {
+    final db = await database;
+    final maps = await db.query('off_days', orderBy: 'off_date DESC');
+    return List.generate(maps.length, (i) => OffDay.fromMap(maps[i]));
+  }
+
+  Future<List<OffDay>> getOffDaysByMonth(String monthYear) async {
+    final db = await database;
+    final allOffDays = await getOffDays();
+    return allOffDays.where((offDay) => offDay.getMonthYear() == monthYear).toList();
+  }
+
+  Future<OffDay?> getOffDayByDate(DateTime date) async {
+    final db = await database;
+    final dateStr = DateTime(date.year, date.month, date.day).toIso8601String();
+    final maps = await db.query(
+      'off_days',
+      where: 'off_date LIKE ?',
+      whereArgs: ['${dateStr.split('T')[0]}%'],
+    );
+    if (maps.isEmpty) return null;
+    return OffDay.fromMap(maps.first);
+  }
+
+  Future<bool> isOffDay(DateTime date) async {
+    final offDay = await getOffDayByDate(date);
+    return offDay != null;
+  }
+
+  Future<void> deleteOffDay(int id) async {
+    final db = await database;
+    await db.delete('off_days', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteOffDayByDate(DateTime date) async {
+    final db = await database;
+    final dateStr = DateTime(date.year, date.month, date.day).toIso8601String();
+    await db.delete(
+      'off_days',
+      where: 'off_date LIKE ?',
+      whereArgs: ['${dateStr.split('T')[0]}%'],
+    );
   }
 
   Future<void> close() async {

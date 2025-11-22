@@ -166,6 +166,20 @@ class _DrawerMenuState extends State<DrawerMenu> {
                   },
                 ),
 
+                // Off Days
+                ListTile(
+                  leading: const Icon(Icons.event_busy, color: Colors.grey),
+                  title: const Text('Off Days'),
+                  selected: widget.currentRoute == '/off-days',
+                  selectedTileColor: AppColors.accidentOrange.withOpacity(0.1),
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (widget.currentRoute != '/off-days') {
+                      Navigator.pushNamed(context, '/off-days');
+                    }
+                  },
+                ),
+
                 const Divider(),
 
                 // About

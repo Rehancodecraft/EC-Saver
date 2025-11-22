@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/emergency.dart';
+import '../models/off_day.dart';
 import '../services/database_service.dart';
 import '../services/pdf_service.dart';
 import '../utils/constants.dart';
@@ -16,6 +17,7 @@ class RecordsScreen extends StatefulWidget {
 
 class _RecordsScreenState extends State<RecordsScreen> {
   Map<String, List<Emergency>> _groupedEmergencies = {};
+  Map<String, List<OffDay>> _groupedOffDays = {};
   bool _isLoading = true;
   String? _selectedFilter;
   String? _selectedMonth;
@@ -95,6 +97,17 @@ class _RecordsScreenState extends State<RecordsScreen> {
         grouped[monthYear]!.add(emergency);
       }
 
+      // Load off days and group by month
+      final offDays = await _databaseService.getOffDays();
+      final Map<String, List<OffDay>> groupedOffDays = {};
+      for (final offDay in offDays) {
+        final monthYear = offDay.getMonthYear();
+        if (!groupedOffDays.containsKey(monthYear)) {
+          groupedOffDays[monthYear] = [];
+        }
+        groupedOffDays[monthYear]!.add(offDay);
+      }
+
       // Extract months that have data and sort DESCENDING (newest first)
       final uniqueMonths = grouped.keys.toList();
       uniqueMonths.sort((a, b) {
@@ -105,6 +118,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
       setState(() {
         _groupedEmergencies = grouped;
+        _groupedOffDays = groupedOffDays;
         _allMonths = uniqueMonths;
         _isLoading = false;
       });
@@ -778,7 +792,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                     Padding(
                                       padding: const EdgeInsets.all(12),
                                       child: Column(
-                                        children: _buildDateWiseRecords(emergencies),
+                                        children: _buildDateWiseRecords(emergencies, month),
                                       ),
                                     )
                                   else
@@ -803,7 +817,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   // Build date-wise records method
-  List<Widget> _buildDateWiseRecords(List<Emergency> emergencies) {
+  List<Widget> _buildDateWiseRecords(List<Emergency> emergencies, String monthYear) {
     // Group emergencies by date
     final Map<String, List<Emergency>> dateGroups = {};
     
@@ -815,8 +829,21 @@ class _RecordsScreenState extends State<RecordsScreen> {
       dateGroups[dateKey]!.add(emergency);
     }
 
+    // Get off days for this month
+    final offDaysForMonth = _groupedOffDays[monthYear] ?? [];
+    final Map<String, OffDay> offDaysByDate = {};
+    for (final offDay in offDaysForMonth) {
+      final dateKey = offDay.getFormattedDate();
+      offDaysByDate[dateKey] = offDay;
+    }
+
+    // Combine dates (emergencies + off days)
+    final Set<String> allDates = {};
+    allDates.addAll(dateGroups.keys);
+    allDates.addAll(offDaysByDate.keys);
+
     // Sort dates in descending order (latest first)
-    final sortedDates = dateGroups.keys.toList()
+    final sortedDates = allDates.toList()
       ..sort((a, b) {
         final dateA = DateFormat('dd MMM yyyy').parse(a);
         final dateB = DateFormat('dd MMM yyyy').parse(b);
@@ -827,7 +854,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
     final List<Widget> widgets = [];
 
     for (final dateKey in sortedDates) {
-      final records = dateGroups[dateKey]!;
+      final records = dateGroups[dateKey] ?? [];
+      final offDay = offDaysByDate[dateKey];
 
       // Date Header
       widgets.add(
@@ -836,37 +864,109 @@ class _RecordsScreenState extends State<RecordsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           margin: const EdgeInsets.only(bottom: 8, top: 12),
           decoration: BoxDecoration(
-            color: AppColors.primaryRed.withOpacity(0.1),
+            color: offDay != null 
+                ? Colors.orange.withOpacity(0.1)
+                : AppColors.primaryRed.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
-              const Icon(Icons.calendar_today, size: 16, color: AppColors.primaryRed),
+              Icon(
+                offDay != null ? Icons.event_busy : Icons.calendar_today,
+                size: 16,
+                color: offDay != null ? Colors.orange : AppColors.primaryRed,
+              ),
               const SizedBox(width: 8),
               Text(
                 dateKey,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primaryRed,
+                  color: offDay != null ? Colors.orange : AppColors.primaryRed,
                 ),
               ),
+              if (offDay != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'OFF DAY',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
               const Spacer(),
-              Text(
-                '${records.length} record${records.length > 1 ? 's' : ''}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w500,
+              if (records.isNotEmpty)
+                Text(
+                  '${records.length} record${records.length > 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
       );
 
-      // Table for this date
-      widgets.add(
+      // Show off day info if it's an off day
+      if (offDay != null) {
+        widgets.add(
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.event_busy, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Off Day - No Entries',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      if (offDay.notes != null && offDay.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          offDay.notes!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Table for this date (only if there are records)
+      if (records.isNotEmpty)
+        widgets.add(
         Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
@@ -960,6 +1060,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
           ),
         ),
       );
+      }
     }
 
     return widgets;

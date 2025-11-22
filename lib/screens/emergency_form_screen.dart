@@ -79,6 +79,23 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
     );
 
     if (picked != null) {
+      // Check if selected date is an off day
+      final isOffDay = await _databaseService.isOffDay(picked);
+      if (isOffDay) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'This date (${picked.day}/${picked.month}/${picked.year}) is marked as an off day. Cannot select this date for entries.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return; // Don't set the date if it's an off day
+      }
+
       setState(() {
         _selectedDate = picked;
         final now = DateTime.now();
@@ -93,6 +110,25 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
     if (!_formKey.currentState!.validate()) {
       print('DEBUG: Form validation failed');
       return;
+    }
+
+    // Check if selected date is an off day
+    if (_selectedDate != null) {
+      final isOffDay = await _databaseService.isOffDay(_selectedDate!);
+      if (isOffDay) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Cannot add entry on ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} - This day is marked as an off day',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
