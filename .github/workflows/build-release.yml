@@ -369,11 +369,24 @@ jobs:
             echo "📱 APK versionName: $APK_VERSION"
             echo "📱 APK versionCode: $APK_BUILD"
             EXPECTED_VERSION="${{ steps.version.outputs.VERSION }}"
+            EXPECTED_BUILD="${{ steps.version.outputs.BUILD }}"
+            echo "📋 Expected version: $EXPECTED_VERSION"
+            echo "📋 Expected build: $EXPECTED_BUILD"
+            
             if [[ "$APK_VERSION" != "$EXPECTED_VERSION" && "$APK_VERSION" != "unknown" ]]; then
-              echo "⚠️  WARNING: APK version ($APK_VERSION) doesn't match expected ($EXPECTED_VERSION)"
+              echo "❌ ERROR: APK version ($APK_VERSION) doesn't match expected ($EXPECTED_VERSION)!"
+              echo "❌ This APK will show wrong version in app info!"
+              exit 1
             fi
+            
+            if [[ "$APK_BUILD" != "$EXPECTED_BUILD" && "$APK_BUILD" != "unknown" ]]; then
+              echo "⚠️  WARNING: APK build ($APK_BUILD) doesn't match expected ($EXPECTED_BUILD)"
+            fi
+            
+            echo "✅ APK version verified: $APK_VERSION+$APK_BUILD"
           else
             echo "ℹ️  aapt2 not available, skipping APK version check"
+            echo "⚠️  WARNING: Cannot verify APK version - install aapt2 for verification"
           fi
       
       - name: Rename APK
