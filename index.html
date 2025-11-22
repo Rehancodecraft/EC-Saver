@@ -318,21 +318,29 @@
         async function fetchLatestRelease() {
             try {
                 console.log('🔄 Fetching latest release from GitHub...');
-                // Add timestamp to prevent caching
-                const timestamp = new Date().getTime();
-                // Use a more aggressive cache-busting approach
+                
+                // Update UI to show loading
+                const versionBadge = document.getElementById('versionBadge');
+                if (versionBadge) {
+                    versionBadge.textContent = 'Version: Loading...';
+                }
+                
+                // Use aggressive cache-busting
                 const timestamp = new Date().getTime();
                 const random = Math.random().toString(36).substring(7);
-                const response = await fetch(`https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest?t=${timestamp}&r=${random}`, {
+                const apiUrl = `https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest?t=${timestamp}&r=${random}`;
+                
+                console.log('📡 API URL:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/vnd.github.v3+json',
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
                         'Pragma': 'no-cache',
-                        'Expires': '0',
-                        'If-None-Match': '' // Force fresh fetch
+                        'Expires': '0'
                     },
-                    cache: 'no-store' // Explicitly disable caching
+                    cache: 'no-store'
                 });
                 
                 if (!response.ok) {
@@ -360,7 +368,7 @@
                     console.log('📦 Asset browser_download_url:', apkAssets[0].browser_download_url);
                 } else {
                     // Fallback - construct expected APK name
-                    const versionTag = tagName || 'v1.1.1';
+                    const versionTag = tagName || 'v1.1.2';
                     const expectedApkName = `ec-saver-v${versionTag.replace('v', '')}-release.apk`;
                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${versionTag}/${expectedApkName}`;
                     latestApkName = expectedApkName;
@@ -368,8 +376,11 @@
                 }
                 
                 // Update UI with actual version
-                const versionText = tagName || 'v1.1.1';
-                document.getElementById('versionBadge').textContent = `Version: ${versionText}`;
+                const versionText = tagName || 'v1.1.2';
+                const versionBadge = document.getElementById('versionBadge');
+                if (versionBadge) {
+                    versionBadge.textContent = `Version: ${versionText}`;
+                }
                 console.log(`✅ UI updated to show version: ${versionText}`);
                 
                 const downloadBtn = document.getElementById('downloadButton');
@@ -387,42 +398,70 @@
                 })
                 .then(response => response.json())
                 .then(releases => {
+                    console.log('📦 Fallback: Got releases list, count:', releases?.length || 0);
                     if (Array.isArray(releases) && releases.length > 0) {
                         const latestRelease = releases[0];
-                        const tagName = latestRelease.tag_name || 'v1.1.1';
+                        const tagName = latestRelease.tag_name || 'v1.1.2';
+                        console.log('📦 Fallback: Latest release tag:', tagName);
                         const apkAssets = latestRelease.assets?.filter(asset => asset.name?.endsWith('.apk')) || [];
+                        console.log('📦 Fallback: Found APK assets:', apkAssets.length);
                         
                         if (apkAssets.length > 0) {
                             // Use browser_download_url from API for direct download
                             latestApkUrl = apkAssets[0].browser_download_url || 
                                           `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/${apkAssets[0].name}`;
                             latestApkName = apkAssets[0].name;
-                            document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
+                            console.log('✅ Fallback: Using APK:', latestApkName);
+                            console.log('✅ Fallback: Download URL:', latestApkUrl);
+                            const versionBadge = document.getElementById('versionBadge');
+                            if (versionBadge) {
+                                versionBadge.textContent = `Version: ${tagName}`;
+                            }
                         } else {
                             // Fallback to latest known version
-                            const fallbackVersion = tagName || 'v1.1.1';
+                            const fallbackVersion = tagName || 'v1.1.2';
                             latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/ec-saver-v${tagName.replace('v', '')}-release.apk`;
                             latestApkName = `ec-saver-v${tagName.replace('v', '')}-release.apk`;
-                            document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
+                            console.log('⚠️  Fallback: No APK assets, using constructed URL:', latestApkUrl);
+                            const versionBadge = document.getElementById('versionBadge');
+                            if (versionBadge) {
+                                versionBadge.textContent = `Version: ${tagName}`;
+                            }
                         }
                     } else {
                         // Final fallback
-                        const fallbackVersion = 'v1.1.1';
-                        latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.1-release.apk`;
-                        latestApkName = `ec-saver-v1.1.1-release.apk`;
-                        document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion}`;
+                        const fallbackVersion = 'v1.1.2';
+                        latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.2-release.apk`;
+                        latestApkName = `ec-saver-v1.1.2-release.apk`;
+                        console.log('⚠️  Final fallback: Using version', fallbackVersion);
+                        const versionBadge = document.getElementById('versionBadge');
+                        if (versionBadge) {
+                            versionBadge.textContent = `Version: ${fallbackVersion}`;
+                        }
                     }
-                    document.getElementById('downloadButton').disabled = false;
+                    const downloadBtn = document.getElementById('downloadButton');
+                    if (downloadBtn) {
+                        downloadBtn.disabled = false;
+                    }
+                    console.log('✅ Fallback: Download button enabled');
                 })
                 .catch(fallbackError => {
                     console.error('❌ Fallback fetch also failed:', fallbackError);
                     // Final fallback to latest known version
-                    const fallbackVersion = 'v1.1.1';
-                    latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.1-release.apk`;
-                    latestApkName = `ec-saver-v1.1.1-release.apk`;
+                    const fallbackVersion = 'v1.1.2';
+                    latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.2-release.apk`;
+                    latestApkName = `ec-saver-v1.1.2-release.apk`;
                     
-                    document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion} (offline)`;
-                    document.getElementById('downloadButton').disabled = false;
+                    console.log('⚠️  Using hardcoded fallback:', fallbackVersion);
+                    const versionBadge = document.getElementById('versionBadge');
+                    if (versionBadge) {
+                        versionBadge.textContent = `Version: ${fallbackVersion} (offline)`;
+                    }
+                    
+                    const downloadBtn = document.getElementById('downloadButton');
+                    if (downloadBtn) {
+                        downloadBtn.disabled = false;
+                    }
                     
                     // Show error message to user
                     setTimeout(() => {
@@ -455,19 +494,26 @@
             // Method 1: Fetch API with blob (BEST for mobile - no redirects, stays on page)
             try {
                 console.log('📥 Using Fetch API to download...');
+                console.log('📥 Download URL:', latestApkUrl);
+                
                 const response = await fetch(latestApkUrl, {
                     method: 'GET',
                     redirect: 'follow', // Follow redirects automatically
-                    cache: 'no-cache'
+                    cache: 'no-cache',
+                    mode: 'cors' // Enable CORS
                 });
 
+                console.log('📥 Response status:', response.status, response.statusText);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 // Get the blob
+                console.log('📥 Fetching blob...');
                 const blob = await response.blob();
                 console.log('✅ Blob received, size:', blob.size, 'bytes');
+                console.log('✅ Blob type:', blob.type);
 
                 // Verify it's an APK (check size - should be > 10MB for our app)
                 if (blob.size > 10000000) { // At least 10MB
@@ -501,10 +547,22 @@
                     return; // Success!
                 } else {
                     console.error('❌ Downloaded file too small:', blob.size, 'bytes (expected > 10MB)');
+                    console.error('❌ This might be an HTML error page, not an APK');
+                    // Check if it's HTML
+                    const text = await blob.text();
+                    if (text.includes('<html') || text.includes('<!DOCTYPE')) {
+                        console.error('❌ Downloaded file is HTML, not APK!');
+                        alert('Download failed: Received HTML instead of APK. Please try again or download directly from GitHub releases.');
+                        downloadBtn.classList.remove('loading');
+                        downloadBtn.disabled = false;
+                        downloadInProgress = false;
+                        return;
+                    }
                     throw new Error('Downloaded file is too small, might be HTML error page');
                 }
             } catch (fetchError) {
                 console.error('❌ Fetch API failed:', fetchError);
+                console.error('❌ Error details:', fetchError.message);
                 console.log('🔄 Trying fallback method...');
                 // Fall through to fallback method
             }
@@ -580,9 +638,52 @@
         }
 
         // Initialize on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            fetchLatestRelease();
-        });
+        // Initialize on page load
+        function initializePage() {
+            console.log('🚀 Initializing page...');
+            const versionBadge = document.getElementById('versionBadge');
+            const downloadBtn = document.getElementById('downloadButton');
+            
+            if (!versionBadge) {
+                console.error('❌ Version badge not found!');
+                return;
+            }
+            
+            if (!downloadBtn) {
+                console.error('❌ Download button not found!');
+                return;
+            }
+            
+            // Set initial state
+            versionBadge.textContent = 'Version: Loading...';
+            downloadBtn.disabled = true;
+            
+            // Fetch latest release
+            fetchLatestRelease().catch(error => {
+                console.error('❌ Failed to fetch release:', error);
+                versionBadge.textContent = 'Version: Error - Check console';
+                versionBadge.style.color = '#ff6b6b';
+                downloadBtn.disabled = false; // Enable button even on error
+            });
+        }
+        
+        // Try multiple initialization methods
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', initializePage);
+        } else {
+            // DOM already loaded
+            initializePage();
+        }
+        
+        // Also try after a short delay as fallback
+        setTimeout(() => {
+            if (!latestApkUrl) {
+                console.log('🔄 Retrying fetch after delay...');
+                fetchLatestRelease().catch(error => {
+                    console.error('❌ Retry failed:', error);
+                });
+            }
+        }, 2000);
 
         // Prevent zoom on double tap (mobile)
         let lastTouchEnd = 0;
