@@ -131,9 +131,16 @@ class _UpdateDialogState extends State<UpdateDialog> {
               onPressed: _isDownloading
                   ? null
                   : () async {
+                      // Save dismissed version with build number for proper tracking
                       final prefs = await SharedPreferences.getInstance();
-                      await prefs.setString('dismissed_update_version', widget.latestVersion);
-                      Navigator.of(context).pop();
+                      final versionKey = '${widget.latestVersion}-${widget.latestBuild}';
+                      await prefs.setString('dismissed_update_version', versionKey);
+                      print('DEBUG: UpdateDialog - User clicked Later, saved dismissed version: $versionKey');
+                      
+                      // Close dialog and let app continue
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
                     },
               child: Text('Later'),
             ),

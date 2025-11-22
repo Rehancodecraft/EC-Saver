@@ -137,9 +137,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         }
         
         print('DEBUG: Splash - Showing update dialog for ${info['latestVersion']}');
-        showDialog(
+        // Show dialog and continue after it's dismissed
+        await showDialog(
           context: context,
-          barrierDismissible: false,
+          barrierDismissible: !(info['forceUpdate'] ?? false),
           builder: (context) => UpdateDialog(
             latestVersion: info['latestVersion'],
             latestBuild: info['latestBuild'] ?? 0,
@@ -148,6 +149,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             forceUpdate: info['forceUpdate'] ?? false,
           ),
         );
+        
+        // After dialog is dismissed (user clicked "Later" or closed it), continue to app
+        print('DEBUG: Splash - Update dialog dismissed, continuing to app');
+        if (mounted) {
+          _checkRegistrationStatus();
+        }
         return;
       }
       
