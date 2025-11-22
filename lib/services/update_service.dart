@@ -106,18 +106,28 @@ class UpdateService {
       print('DEBUG: UpdateService - Latest version: $latestVersion, build: $latestBuild');
       print('DEBUG: UpdateService - APK URL: $apkUrl');
 
-      // Compare versions: first by build number, then by version string
+      // Compare versions: first by version string, then by build number
       bool updateAvailable = false;
-      if (latestBuild > 0 && currentBuild > 0) {
-        // Use build number for comparison (most reliable)
-        updateAvailable = latestBuild > currentBuild;
-      }
       
-      // Fallback to version string comparison if build numbers are equal or missing
-      if (!updateAvailable) {
-        updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
+      // First compare version strings (e.g., 1.0.6 vs 1.0.2)
+      final versionComparison = compareVersions(latestVersion, currentVersion);
+      
+      if (versionComparison > 0) {
+        // Latest version is newer
+        updateAvailable = true;
+      } else if (versionComparison == 0) {
+        // Same version, compare build numbers
+        if (latestBuild > 0 && currentBuild > 0) {
+          updateAvailable = latestBuild > currentBuild;
+        } else if (latestBuild > 0 && currentBuild == 0) {
+          // If latest has build number but current doesn't, check if build > 0
+          updateAvailable = latestBuild > 0;
+        }
       }
+      // If versionComparison < 0, latest is older (shouldn't happen), so no update
 
+      print('DEBUG: UpdateService - Version comparison: $versionComparison');
+      print('DEBUG: UpdateService - Current: $currentVersion+$currentBuild, Latest: $latestVersion+$latestBuild');
       print('DEBUG: UpdateService - Update available: $updateAvailable');
 
       return {

@@ -50,11 +50,39 @@ jobs:
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
       
-      - name: Get version from pubspec
+      - name: Get version from tag or pubspec
         id: version
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1 | tr -d ' ')
-          BUILD=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f2 | tr -d ' ')
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_REF_TYPE: ${GITHUB_REF_TYPE}"
+          
+          # Get tag name (e.g., v1.0.6 or v1.0.6+6)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            TAG_NAME="${TAG_NAME#v}"  # Remove 'v' prefix if present
+            echo "Extracted tag name: $TAG_NAME"
+            
+            # Extract version and build from tag
+            if [[ "$TAG_NAME" == *"+"* ]]; then
+              VERSION=$(echo "$TAG_NAME" | cut -d '+' -f1)
+              BUILD=$(echo "$TAG_NAME" | cut -d '+' -f2)
+            else
+              VERSION="$TAG_NAME"
+              BUILD="1"
+            fi
+            
+            # Update pubspec.yaml with the version from tag
+            sed -i "s/^version:.*/version: $VERSION+$BUILD/" pubspec.yaml
+            echo "✅ Updated pubspec.yaml to version: $VERSION+$BUILD"
+            cat pubspec.yaml | grep "^version:"
+          else
+            # Manual trigger or branch push - get from pubspec.yaml
+            echo "No tag found, reading from pubspec.yaml"
+            VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1 | tr -d ' ')
+            BUILD=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f2 | tr -d ' ')
+            echo "Using version from pubspec.yaml: $VERSION+$BUILD"
+          fi
+          
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "BUILD=$BUILD" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION (build $BUILD)"
