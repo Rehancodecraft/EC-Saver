@@ -345,15 +345,17 @@
                 
                 if (apkAssets.length > 0) {
                     const apkName = apkAssets[0].name;
-                    // Use browser_download_url for reliability, or construct direct URL
+                    // Use browser_download_url from API - this is the direct download link
+                    // It redirects to CDN but XHR will follow redirects automatically
                     latestApkUrl = apkAssets[0].browser_download_url || 
                                   `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/${apkName}`;
                     latestApkName = apkName;
                     console.log('✅ Download URL:', latestApkUrl);
                     console.log('📦 APK Name:', latestApkName);
+                    console.log('📦 Asset browser_download_url:', apkAssets[0].browser_download_url);
                 } else {
                     // Fallback - construct expected APK name
-                    const versionTag = tagName || 'v1.0.8';
+                    const versionTag = tagName || 'v1.0.9';
                     const expectedApkName = `ec-saver-v${versionTag.replace('v', '')}-release.apk`;
                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${versionTag}/${expectedApkName}`;
                     latestApkName = expectedApkName;
@@ -361,7 +363,7 @@
                 }
                 
                 // Update UI with actual version
-                const versionText = tagName || 'v1.0.8';
+                const versionText = tagName || 'v1.0.9';
                 document.getElementById('versionBadge').textContent = `Version: ${versionText}`;
                 console.log(`✅ UI updated to show version: ${versionText}`);
                 
@@ -382,26 +384,27 @@
                 .then(releases => {
                     if (Array.isArray(releases) && releases.length > 0) {
                         const latestRelease = releases[0];
-                        const tagName = latestRelease.tag_name || 'v1.0.8';
+                        const tagName = latestRelease.tag_name || 'v1.0.9';
                         const apkAssets = latestRelease.assets?.filter(asset => asset.name?.endsWith('.apk')) || [];
                         
                         if (apkAssets.length > 0) {
+                            // Use browser_download_url from API for direct download
                             latestApkUrl = apkAssets[0].browser_download_url || 
                                           `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/${apkAssets[0].name}`;
                             latestApkName = apkAssets[0].name;
                             document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
                         } else {
                             // Fallback to latest known version
-                            const fallbackVersion = 'v1.0.8';
+                            const fallbackVersion = tagName || 'v1.0.9';
                             latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/ec-saver-v${tagName.replace('v', '')}-release.apk`;
                             latestApkName = `ec-saver-v${tagName.replace('v', '')}-release.apk`;
                             document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
                         }
                     } else {
                         // Final fallback
-                        const fallbackVersion = 'v1.0.8';
-                        latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.0.8-release.apk`;
-                        latestApkName = `ec-saver-v1.0.8-release.apk`;
+                        const fallbackVersion = 'v1.0.9';
+                        latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.0.9-release.apk`;
+                        latestApkName = `ec-saver-v1.0.9-release.apk`;
                         document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion}`;
                     }
                     document.getElementById('downloadButton').disabled = false;
@@ -409,9 +412,9 @@
                 .catch(fallbackError => {
                     console.error('❌ Fallback fetch also failed:', fallbackError);
                     // Final fallback to latest known version
-                    const fallbackVersion = 'v1.0.8';
-                    latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.0.8-release.apk`;
-                    latestApkName = `ec-saver-v1.0.8-release.apk`;
+                    const fallbackVersion = 'v1.0.9';
+                    latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.0.9-release.apk`;
+                    latestApkName = `ec-saver-v1.0.9-release.apk`;
                     
                     document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion} (offline)`;
                     document.getElementById('downloadButton').disabled = false;
@@ -444,11 +447,13 @@
             downloadBtn.classList.add('loading');
             downloadBtn.disabled = true;
 
-            // Mobile-optimized: Use XMLHttpRequest with blob (bypasses CORS, no redirect)
+            // Mobile-optimized: Use XMLHttpRequest with blob (bypasses CORS, follows redirects)
+            // XHR automatically follows redirects, so we can use the GitHub URL directly
             // This is the most reliable method for mobile browsers
             const xhr = new XMLHttpRequest();
             xhr.open('GET', latestApkUrl, true);
             xhr.responseType = 'blob';
+            // XHR automatically follows redirects, so no need to handle 302s manually
             
             xhr.onprogress = function(e) {
                 if (e.lengthComputable) {
@@ -521,29 +526,30 @@
             // Fallback: Direct link method (if XHR fails)
             function fallbackDirectDownload() {
                 console.log('Using fallback direct download method');
+                console.log('Fallback URL:', latestApkUrl);
                 
-                // Create direct download link
-                const link = document.createElement('a');
-                link.href = latestApkUrl;
-                link.download = latestApkName;
-                link.style.display = 'none';
-                link.setAttribute('download', latestApkName);
-                document.body.appendChild(link);
-                
-                // Trigger download
-                link.click();
-                
-                // Clean up
-                setTimeout(() => {
-                    if (link.parentNode) {
-                        document.body.removeChild(link);
+                // For fallback, we need to open the download URL directly
+                // GitHub's releases/download URLs redirect, but we can use window.location
+                // or create a form submission to force download
+                try {
+                    // Try using window.open first (works better on mobile)
+                    const newWindow = window.open(latestApkUrl, '_blank');
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                        // If popup blocked, use direct navigation
+                        window.location.href = latestApkUrl;
                     }
-                }, 1000);
+                } catch (e) {
+                    console.error('Fallback download error:', e);
+                    // Last resort: direct navigation
+                    window.location.href = latestApkUrl;
+                }
                 
-                // Reset button
-                downloadBtn.classList.remove('loading');
-                downloadBtn.disabled = false;
-                downloadInProgress = false;
+                // Reset button after a delay
+                setTimeout(() => {
+                    downloadBtn.classList.remove('loading');
+                    downloadBtn.disabled = false;
+                    downloadInProgress = false;
+                }, 2000);
             }
         }
 
