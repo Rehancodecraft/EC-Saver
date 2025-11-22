@@ -167,6 +167,29 @@
             display: none;
         }
         
+        .progress-bar {
+            display: none;
+            width: 100%;
+            max-width: 320px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            margin: 15px auto 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar.active {
+            display: block;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #FFFFFF;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
         .footer-text {
             position: absolute;
             bottom: 20px;
@@ -303,6 +326,10 @@
                 <span>Download Now</span>
             </span>
         </button>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
     </div>
     
     <div class="footer-text">
@@ -373,7 +400,7 @@
             }
         }
 
-        // Download function - works on mobile without redirect
+        // MOBILE-OPTIMIZED DOWNLOAD - NO REDIRECT METHOD
         async function initiateDownload() {
             if (downloadInProgress) {
                 console.log('⚠️ Download already in progress');
@@ -390,37 +417,105 @@
             
             downloadInProgress = true;
             const downloadBtn = document.getElementById('downloadButton');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            
             downloadBtn.classList.add('loading');
             downloadBtn.disabled = true;
+            progressBar.classList.add('active');
 
             try {
-                // Create hidden link for download
+                // Method: Fetch as Blob + Create Object URL (BEST for mobile - NO REDIRECT!)
+                console.log('📥 Fetching APK as blob...');
+                
+                const response = await fetch(latestApkUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                // Get total size
+                const contentLength = response.headers.get('content-length');
+                const total = parseInt(contentLength, 10);
+                console.log('📦 Total size:', total, 'bytes');
+
+                // Read response as stream with progress
+                const reader = response.body.getReader();
+                const chunks = [];
+                let receivedLength = 0;
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    receivedLength += value.length;
+                    
+                    // Update progress bar
+                    if (total) {
+                        const progress = (receivedLength / total) * 100;
+                        progressFill.style.width = progress + '%';
+                        console.log(`📥 Downloaded: ${Math.round(progress)}%`);
+                    }
+                }
+
+                // Combine chunks into single Uint8Array
+                const chunksAll = new Uint8Array(receivedLength);
+                let position = 0;
+                for (let chunk of chunks) {
+                    chunksAll.set(chunk, position);
+                    position += chunk.length;
+                }
+
+                // Create blob from bytes
+                const blob = new Blob([chunksAll], { type: 'application/vnd.android.package-archive' });
+                console.log('✅ Blob created, size:', blob.size, 'bytes');
+
+                // Create object URL (this is LOCAL, no redirect!)
+                const blobUrl = window.URL.createObjectURL(blob);
+                console.log('✅ Blob URL created:', blobUrl);
+
+                // Create download link with blob URL
                 const link = document.createElement('a');
-                link.href = latestApkUrl;
+                link.href = blobUrl;
                 link.download = latestApkName;
                 link.style.display = 'none';
                 
                 // Add to DOM
                 document.body.appendChild(link);
                 
-                // Trigger download
+                // Trigger download (NO REDIRECT - uses local blob URL!)
                 link.click();
                 
-                console.log('✅ Download initiated');
+                console.log('✅ Download triggered via blob URL (NO REDIRECT!)');
                 
-                // Clean up after short delay
+                // Clean up after download starts
                 setTimeout(() => {
                     document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+                }, 1000);
+                
+                // Reset UI
+                setTimeout(() => {
                     downloadBtn.classList.remove('loading');
                     downloadBtn.disabled = false;
+                    progressBar.classList.remove('active');
+                    progressFill.style.width = '0%';
                     downloadInProgress = false;
-                }, 1000);
+                }, 2000);
                 
             } catch (error) {
                 console.error('❌ Download failed:', error);
-                alert('Download failed. Please try again.');
+                alert('Download failed. Please check your internet connection and try again.');
                 downloadBtn.classList.remove('loading');
                 downloadBtn.disabled = false;
+                progressBar.classList.remove('active');
+                progressFill.style.width = '0%';
                 downloadInProgress = false;
             }
         }
