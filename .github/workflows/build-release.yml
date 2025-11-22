@@ -38,26 +38,82 @@ jobs:
         run: |
           echo "🔧 Fixing Gradle compatibility issues..."
           
-          # Run the fix script if it exists
-          if [ -f "android/fix_plugins.sh" ]; then
-            bash android/fix_plugins.sh
+          # Find app_links plugin and fix it
+          APP_LINKS_DIR=$(find ~/.pub-cache/hosted/pub.dev -name "app_links-*" -type d | head -1)
+          
+          if [ -n "$APP_LINKS_DIR" ] && [ -d "$APP_LINKS_DIR" ]; then
+            BUILD_GRADLE="$APP_LINKS_DIR/android/build.gradle"
+            echo "🔍 Found app_links at: $BUILD_GRADLE"
+            
+            if [ -f "$BUILD_GRADLE" ]; then
+              # Backup
+              cp "$BUILD_GRADLE" "$BUILD_GRADLE.bak"
+              
+              echo "📄 Original build.gradle content:"
+              cat "$BUILD_GRADLE"
+              
+              # Create a completely new build.gradle that's compatible
+              cat > "$BUILD_GRADLE" << 'EOF'
+group 'com.llfbandit.app_links'
+version '1.0-SNAPSHOT'
+
+buildscript {
+    ext.kotlin_version = '1.9.0'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.3'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    compileSdk 34
+    namespace "com.llfbandit.app_links"
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+    
+    defaultConfig {
+        minSdk 21
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+EOF
+              
+              echo "✅ Replaced app_links build.gradle with compatible version"
+              echo "📄 New build.gradle content:"
+              cat "$BUILD_GRADLE"
+            else
+              echo "⚠️  build.gradle not found at: $BUILD_GRADLE"
+            fi
           else
-            # Fallback: Fix app_links directly
-            echo "Using fallback fix method..."
-            find ~/.pub-cache/hosted/pub.dev -name "app_links-*" -type d | while read plugin_dir; do
-              build_gradle="$plugin_dir/android/build.gradle"
-              if [ -f "$build_gradle" ]; then
-                echo "Fixing: $build_gradle"
-                cp "$build_gradle" "$build_gradle.bak"
-                sed -i 's/flutter\.compileSdk/34/g' "$build_gradle" || true
-                sed -i 's/flutter\.minSdkVersion/21/g' "$build_gradle" || true
-                sed -i 's/flutter\.targetSdkVersion/34/g' "$build_gradle" || true
-                if grep -q "android {" "$build_gradle" && ! grep -q "compileSdk" "$build_gradle"; then
-                  sed -i '/android {/a\    compileSdk 34' "$build_gradle"
-                fi
-                echo "✅ Fixed: $build_gradle"
-              fi
-            done
+            echo "⚠️  app_links plugin not found in pub cache"
           fi
           
           echo "✅ Plugin compatibility fixes completed"
