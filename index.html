@@ -354,15 +354,21 @@
                 
                 console.log(`📦 Found ${apkAssets.length} APK(s)`);
                 
-                if (apkAssets.length > 0) {
-                    // Use browser_download_url
-                    latestApkUrl = apkAssets[0].browser_download_url;
-                    latestApkName = apkAssets[0].name;
-                    console.log('✅ APK URL:', latestApkUrl);
-                    console.log('✅ APK Name:', latestApkName);
-                } else {
-                    console.warn('⚠️ No APK found in release assets');
-                }
+                 if (apkAssets.length > 0) {
+                     // Use browser_download_url
+                     latestApkUrl = apkAssets[0].browser_download_url;
+                     latestApkName = apkAssets[0].name;
+                     console.log('✅ APK URL:', latestApkUrl);
+                     console.log('✅ APK Name:', latestApkName);
+                     console.log('✅ APK Size:', apkAssets[0].size, 'bytes');
+                 } else {
+                     console.warn('⚠️ No APK found in release assets');
+                     // Construct fallback URL
+                     const versionNum = latestVersion.replace('v', '');
+                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${latestVersion}/ec-saver-v${versionNum}-release.apk`;
+                     latestApkName = `ec-saver-v${versionNum}-release.apk`;
+                     console.log('⚠️ Using constructed fallback URL:', latestApkUrl);
+                 }
                 
                 // Update UI
                 updateVersionBadge(latestVersion);
@@ -399,11 +405,11 @@
              }
              
              if (!latestApkUrl) {
-                 alert('Download link not available. Please wait a moment for the page to load.');
-                 console.log('❌ No download URL available');
+                 console.log('❌ No download URL available, fetching...');
                  // Try to fetch if not loaded yet
                  await fetchLatestRelease();
                  if (!latestApkUrl) {
+                     alert('Download link not available. Please refresh the page and try again.');
                      return;
                  }
              }
@@ -421,50 +427,48 @@
              // MOBILE-SPECIFIC: Use hidden iframe (NO REDIRECT, stays on page)
              if (isMobileDevice()) {
                  console.log('📱 Mobile detected - using iframe method');
-                 try {
-                     // Create hidden iframe
-                     const iframe = document.createElement('iframe');
-                     iframe.style.display = 'none';
-                     iframe.style.width = '0';
-                     iframe.style.height = '0';
-                     iframe.style.border = 'none';
-                     iframe.style.position = 'absolute';
-                     iframe.style.left = '-9999px';
-                     iframe.src = latestApkUrl;
-                     
-                     // Add to body
-                     document.body.appendChild(iframe);
-                     
-                     console.log('✅ Iframe download initiated (mobile)');
-                     
-                     // Clean up after download starts
-                     setTimeout(() => {
-                         if (iframe.parentNode) {
-                             document.body.removeChild(iframe);
-                         }
-                         downloadBtn.classList.remove('loading');
-                         downloadBtn.disabled = false;
-                         downloadBtn.textContent = '📥 Download Now';
-                         downloadInProgress = false;
-                     }, 3000);
-                     
-                     return; // Success for mobile
-                     
-                 } catch (iframeError) {
-                     console.error('❌ Iframe method failed:', iframeError);
-                     // Fall through to blob method
-                 }
+                 
+                 // Create hidden iframe
+                 const iframe = document.createElement('iframe');
+                 iframe.style.display = 'none';
+                 iframe.style.width = '0';
+                 iframe.style.height = '0';
+                 iframe.style.border = 'none';
+                 iframe.style.position = 'absolute';
+                 iframe.style.left = '-9999px';
+                 iframe.style.visibility = 'hidden';
+                 iframe.src = latestApkUrl;
+                 
+                 // Add to body
+                 document.body.appendChild(iframe);
+                 
+                 console.log('✅ Iframe download initiated (mobile)');
+                 
+                 // Clean up after download starts
+                 setTimeout(() => {
+                     if (iframe.parentNode) {
+                         document.body.removeChild(iframe);
+                     }
+                     downloadBtn.classList.remove('loading');
+                     downloadBtn.disabled = false;
+                     downloadBtn.textContent = '📥 Download Now';
+                     downloadInProgress = false;
+                 }, 3000);
+                 
+                 return; // Success for mobile
              }
 
-             // DESKTOP/MOBILE FALLBACK: Fetch as blob (works on desktop, fallback for mobile)
+             // DESKTOP: Fetch as blob (works on desktop)
              try {
-                 console.log('📥 Fetching APK as blob...');
+                 console.log('📥 Fetching APK as blob (desktop)...');
                  
                  const response = await fetch(latestApkUrl, {
                      method: 'GET',
                      redirect: 'follow',
                      cache: 'no-cache'
                  });
+
+                 console.log('📥 Response status:', response.status);
 
                  if (!response.ok) {
                      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -474,8 +478,9 @@
                  const blob = await response.blob();
                  console.log('✅ Blob received, size:', blob.size, 'bytes');
 
-                 // Verify it's an APK (check size - should be > 10MB)
+                 // Verify it's an APK (check size - should be > 1MB)
                  if (blob.size < 1000000) { // Less than 1MB is suspicious
+                     console.warn('⚠️ Blob size suspiciously small, checking content...');
                      const text = await blob.text();
                      if (text.includes('<html') || text.includes('<!DOCTYPE')) {
                          throw new Error('Received HTML instead of APK');
@@ -512,48 +517,47 @@
                  
              } catch (fetchError) {
                  console.error('❌ Blob download failed:', fetchError);
+                 console.error('❌ Error details:', fetchError.message);
                  
-                 // Final fallback for mobile: Use form submission (minimal redirect risk)
-                 if (isMobileDevice()) {
-                     console.log('🔄 Mobile fallback: Using form submission');
-                     try {
-                         const form = document.createElement('form');
-                         form.method = 'GET';
-                         form.action = latestApkUrl;
-                         form.target = '_self'; // Same window, but triggers download
-                         form.style.display = 'none';
-                         document.body.appendChild(form);
-                         form.submit();
-                         
-                         setTimeout(() => {
-                             if (form.parentNode) {
-                                 document.body.removeChild(form);
-                             }
-                         }, 1000);
-                         
-                         console.log('✅ Form submission initiated (mobile fallback)');
-                         
-                         // Reset button
-                         setTimeout(() => {
-                             downloadBtn.classList.remove('loading');
-                             downloadBtn.disabled = false;
-                             downloadBtn.textContent = '📥 Download Now';
-                             downloadInProgress = false;
-                         }, 2000);
-                         
-                         return;
-                     } catch (formError) {
-                         console.error('❌ Form submission failed:', formError);
-                     }
+                 // Desktop fallback: Direct link click
+                 console.log('🔄 Desktop fallback: Using direct link');
+                 try {
+                     const link = document.createElement('a');
+                     link.href = latestApkUrl;
+                     link.download = latestApkName;
+                     link.style.display = 'none';
+                     link.setAttribute('download', latestApkName);
+                     document.body.appendChild(link);
+                     link.click();
+                     
+                     setTimeout(() => {
+                         if (link.parentNode) {
+                             document.body.removeChild(link);
+                         }
+                     }, 100);
+                     
+                     console.log('✅ Direct link download initiated');
+                     
+                     // Reset button
+                     setTimeout(() => {
+                         downloadBtn.classList.remove('loading');
+                         downloadBtn.disabled = false;
+                         downloadBtn.textContent = '📥 Download Now';
+                         downloadInProgress = false;
+                     }, 2000);
+                     
+                 } catch (linkError) {
+                     console.error('❌ All download methods failed:', linkError);
+                     
+                     // Last resort: Open in new tab (user can download from there)
+                     console.log('🔄 Last resort: Opening download URL in new tab');
+                     window.open(latestApkUrl, '_blank', 'noopener,noreferrer');
+                     
+                     downloadBtn.classList.remove('loading');
+                     downloadBtn.disabled = false;
+                     downloadBtn.textContent = '📥 Download Now';
+                     downloadInProgress = false;
                  }
-                 
-                 // Last resort: Show error
-                 alert('Unable to start download. Please try again or download directly from GitHub releases.');
-                 
-                 downloadBtn.classList.remove('loading');
-                 downloadBtn.disabled = false;
-                 downloadBtn.textContent = '📥 Download Now';
-                 downloadInProgress = false;
              }
          }
 
