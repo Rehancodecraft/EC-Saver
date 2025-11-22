@@ -68,5 +68,5 @@ flutter {
 
 dependencies {
     // Use an explicit Kotlin stdlib version matching the Kotlin Gradle plugin in android/build.gradle
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
 }
