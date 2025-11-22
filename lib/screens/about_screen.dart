@@ -54,15 +54,36 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
 
   Future<void> _loadVersionInfo() async {
     try {
+      // Force fresh read - don't cache
       final packageInfo = await PackageInfo.fromPlatform();
-      setState(() {
-        _version = packageInfo.version;
-        _buildNumber = packageInfo.buildNumber;
-      });
-    } catch (e) {
-      setState(() {
-        _version = 'Unknown';
-      });
+      
+      // Debug logging to verify what we're reading
+      debugPrint('DEBUG: About Screen - PackageInfo from installed app:');
+      debugPrint('  version: ${packageInfo.version}');
+      debugPrint('  buildNumber: ${packageInfo.buildNumber}');
+      debugPrint('  appName: ${packageInfo.appName}');
+      debugPrint('  packageName: ${packageInfo.packageName}');
+      
+      if (mounted) {
+        setState(() {
+          // PackageInfo reads from the actual installed app's AndroidManifest.xml
+          // This should show the version that was used when the APK was built
+          _version = packageInfo.version.trim();
+          _buildNumber = packageInfo.buildNumber.trim();
+        });
+        
+        // Verify what we set
+        debugPrint('DEBUG: About Screen - Displaying version: $_version+$_buildNumber');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('ERROR: About Screen - Failed to load version info: $e');
+      debugPrint('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _version = 'Unknown';
+          _buildNumber = '';
+        });
+      }
     }
   }
 
@@ -153,12 +174,12 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Version $_version${_buildNumber.isNotEmpty ? '+$_buildNumber' : ''}',
-                style: const TextStyle(
-                  color: AppColors.primaryRed,
-                  fontWeight: FontWeight.bold,
+                        'Version $_version${_buildNumber.isNotEmpty && _buildNumber != '0' ? '+$_buildNumber' : ''}',
+                        style: const TextStyle(
+                          color: AppColors.primaryRed,
+                          fontWeight: FontWeight.bold,
                           fontSize: 15,
-                ),
+                        ),
                       ),
                     ],
               ),
