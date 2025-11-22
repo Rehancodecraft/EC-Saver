@@ -197,10 +197,16 @@ EOF
         run: |
           echo "GITHUB_REF: $GITHUB_REF"
           echo "GITHUB_REF_TYPE: ${GITHUB_REF_TYPE}"
+          echo "GITHUB_REF_NAME: ${GITHUB_REF_NAME:-not set}"
           
           # Get tag name (e.g., v1.0.6 or v1.0.6+6)
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            # Use GITHUB_REF_NAME if available, otherwise extract from GITHUB_REF
+            if [ -n "${GITHUB_REF_NAME}" ]; then
+              TAG_NAME="${GITHUB_REF_NAME}"
+            else
+              TAG_NAME="${GITHUB_REF#refs/tags/}"
+            fi
             TAG_NAME="${TAG_NAME#v}"  # Remove 'v' prefix if present
             echo "📦 Extracted tag name: $TAG_NAME"
             
@@ -316,14 +322,31 @@ EOF
           java -version
           
           # Build with verbose output for debugging
-          flutter build apk --release --no-tree-shake-icons --verbose 2>&1 | tee build.log || {
-            echo "❌ Build failed! Last 50 lines of build log:"
-            tail -50 build.log || true
-            echo "❌ Full error output:"
-            cat build.log | grep -i "error\|fail\|exception" | tail -20 || true
+          set +e  # Don't exit on error immediately
+          flutter build apk --release --no-tree-shake-icons --verbose 2>&1 | tee build.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          set -e  # Re-enable exit on error
+          
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "❌ Build failed with exit code: $BUILD_EXIT_CODE"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ LAST 100 LINES OF BUILD LOG:"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            tail -100 build.log || true
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ ERROR SUMMARY:"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            grep -iE "error|fail|exception|outofmemory|BUILD FAILED" build.log | tail -30 || true
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ GRADLE ERRORS:"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            grep -iE "gradle|AGP|kotlin|plugin" build.log | grep -iE "error|fail" | tail -20 || true
             exit 1
-          }
-          echo "✅ Build completed"
+          fi
+          echo "✅ Build completed successfully"
         env:
           FLUTTER_BUILD_MODE: release
           GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
