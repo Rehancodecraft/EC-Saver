@@ -965,9 +965,9 @@ class _RecordsScreenState extends State<RecordsScreen> {
       }
 
       // Table for this date (only if there are records)
-      if (records.isNotEmpty)
+      if (records.isNotEmpty) {
         widgets.add(
-        Container(
+          Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
@@ -1059,7 +1059,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
             ],
           ),
         ),
-      );
+        );
       }
     }
 
