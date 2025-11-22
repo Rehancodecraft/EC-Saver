@@ -384,7 +384,12 @@
                 console.log(`✅ UI updated to show version: ${versionText}`);
                 
                 const downloadBtn = document.getElementById('downloadButton');
-                downloadBtn.disabled = false;
+                if (downloadBtn) {
+                    downloadBtn.disabled = false;
+                    console.log('✅ Download button enabled');
+                } else {
+                    console.error('❌ Download button not found when trying to enable');
+                }
                 
             } catch (error) {
                 console.error('❌ Fetch failed:', error);
@@ -477,11 +482,30 @@
 
         // Direct download function - Mobile optimized (NO REDIRECT, STAYS ON PAGE)
         async function initiateDownload() {
-            if (downloadInProgress || !latestApkUrl) {
-                if (!latestApkUrl) {
-                    alert('Download link not ready. Please wait a moment and try again.');
-                }
+            console.log('🖱️  Download button clicked');
+            console.log('📦 latestApkUrl:', latestApkUrl);
+            console.log('📦 downloadInProgress:', downloadInProgress);
+            
+            if (downloadInProgress) {
+                console.log('⏳ Download already in progress');
                 return;
+            }
+            
+            if (!latestApkUrl) {
+                console.error('❌ No download URL available');
+                alert('Download link not ready. Please wait a moment and try again.');
+                // Try to fetch again
+                console.log('🔄 Attempting to fetch release again...');
+                try {
+                    await fetchLatestRelease();
+                } catch (error) {
+                    console.error('❌ Fetch failed:', error);
+                    alert('Unable to fetch download link. Please try again later or download from GitHub releases.');
+                }
+                if (!latestApkUrl) {
+                    console.error('❌ Still no URL after retry');
+                    return;
+                }
             }
 
             console.log('🚀 Starting download:', latestApkUrl);
@@ -638,7 +662,6 @@
         }
 
         // Initialize on page load
-        // Initialize on page load
         function initializePage() {
             console.log('🚀 Initializing page...');
             const versionBadge = document.getElementById('versionBadge');
@@ -658,32 +681,59 @@
             versionBadge.textContent = 'Version: Loading...';
             downloadBtn.disabled = true;
             
-            // Fetch latest release
+            // Fetch latest release immediately
+            console.log('📡 Starting fetch...');
             fetchLatestRelease().catch(error => {
                 console.error('❌ Failed to fetch release:', error);
-                versionBadge.textContent = 'Version: Error - Check console';
-                versionBadge.style.color = '#ff6b6b';
-                downloadBtn.disabled = false; // Enable button even on error
+                const badge = document.getElementById('versionBadge');
+                const btn = document.getElementById('downloadButton');
+                if (badge) {
+                    badge.textContent = 'Version: v1.1.2 (offline)';
+                    badge.style.color = '#ff6b6b';
+                }
+                if (btn) {
+                    btn.disabled = false;
+                }
+                // Set fallback URL
+                latestApkUrl = 'https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.2/ec-saver-v1.1.2-release.apk';
+                latestApkName = 'ec-saver-v1.1.2-release.apk';
             });
         }
         
-        // Try multiple initialization methods
+        // Initialize immediately if DOM is ready, otherwise wait
         if (document.readyState === 'loading') {
-            window.addEventListener('DOMContentLoaded', initializePage);
+            console.log('⏳ DOM still loading, waiting for DOMContentLoaded...');
+            window.addEventListener('DOMContentLoaded', () => {
+                console.log('✅ DOMContentLoaded fired');
+                initializePage();
+            });
         } else {
-            // DOM already loaded
+            console.log('✅ DOM already loaded, initializing immediately');
             initializePage();
         }
         
-        // Also try after a short delay as fallback
+        // Fallback: Retry after delay if still not loaded
         setTimeout(() => {
-            if (!latestApkUrl) {
-                console.log('🔄 Retrying fetch after delay...');
-                fetchLatestRelease().catch(error => {
-                    console.error('❌ Retry failed:', error);
-                });
+            const badge = document.getElementById('versionBadge');
+            if (badge && badge.textContent === 'Version: Loading...') {
+                console.log('⚠️  Still loading after 3 seconds, retrying...');
+                if (!latestApkUrl) {
+                    fetchLatestRelease().catch(error => {
+                        console.error('❌ Retry failed:', error);
+                        if (badge) {
+                            badge.textContent = 'Version: v1.1.2 (offline)';
+                            badge.style.color = '#ff6b6b';
+                        }
+                        const btn = document.getElementById('downloadButton');
+                        if (btn) {
+                            btn.disabled = false;
+                        }
+                        latestApkUrl = 'https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.2/ec-saver-v1.1.2-release.apk';
+                        latestApkName = 'ec-saver-v1.1.2-release.apk';
+                    });
+                }
             }
-        }, 2000);
+        }, 3000);
 
         // Prevent zoom on double tap (mobile)
         let lastTouchEnd = 0;
