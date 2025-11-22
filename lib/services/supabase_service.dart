@@ -17,16 +17,17 @@ class SupabaseService {
       // STEP 1: Check if mobile number already exists
       final existing = await supabase
           .from('registered_users')
-          .select('mobile_number')
+          .select('*')
           .eq('mobile_number', mobileNumber)
           .maybeSingle();
 
       if (existing != null) {
-        print('DEBUG: ❌ Phone number already exists in database');
+        print('DEBUG: ✅ Phone number already exists in database - returning existing user data');
         return {
-          'success': false,
-          'message': 'Phone number already registered',
+          'success': true,
+          'message': 'Account already exists. Continuing with existing account.',
           'isDuplicate': true,
+          'existingUser': existing, // Return the existing user data
         };
       }
 
@@ -59,6 +60,27 @@ class SupabaseService {
       if (e.code == '23505') {
         // Check if it's phone number or ID issue
         if (e.message.contains('mobile_number')) {
+          // Try to fetch the existing user
+          try {
+            final existing = await supabase
+                .from('registered_users')
+                .select('*')
+                .eq('mobile_number', mobileNumber)
+                .maybeSingle();
+            
+            if (existing != null) {
+              print('DEBUG: ✅ Found existing user after duplicate error');
+              return {
+                'success': true,
+                'message': 'Account already exists. Continuing with existing account.',
+                'isDuplicate': true,
+                'existingUser': existing,
+              };
+            }
+          } catch (fetchError) {
+            print('DEBUG: Error fetching existing user: $fetchError');
+          }
+          
           return {
             'success': false,
             'message': 'Phone number already registered',
@@ -102,6 +124,22 @@ class SupabaseService {
     } catch (e) {
       print('Error checking user: $e');
       return false;
+    }
+  }
+
+  /// Get existing user by mobile number
+  static Future<Map<String, dynamic>?> getExistingUser(String mobileNumber) async {
+    try {
+      final response = await supabase
+          .from('registered_users')
+          .select('*')
+          .eq('mobile_number', mobileNumber)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      print('Error getting existing user: $e');
+      return null;
     }
   }
 

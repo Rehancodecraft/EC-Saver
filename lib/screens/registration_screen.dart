@@ -74,7 +74,72 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
         print('DEBUG: Supabase result: $result');
 
-        // If phone number already exists, STOP registration
+        // If phone number already exists, load existing account and continue
+        if (result['isDuplicate'] == true && result['existingUser'] != null) {
+          print('DEBUG: Account already exists, loading existing user data');
+          
+          try {
+            // Get existing user data from Supabase
+            final existingUserData = result['existingUser'] as Map<String, dynamic>;
+            
+            // Convert Supabase format (snake_case) to UserProfile format
+            // Use existing user data from Supabase as source of truth
+            final userProfile = UserProfile(
+              fullName: (existingUserData['full_name'] as String?)?.trim() ?? _fullNameController.text.trim(),
+              designation: (existingUserData['designation'] as String?) ?? _selectedDesignation ?? '',
+              district: (existingUserData['district'] as String?) ?? _selectedDistrict ?? '',
+              tehsil: (existingUserData['tehsil'] as String?) ?? _selectedTehsil ?? '',
+              mobileNumber: (existingUserData['mobile_number'] as String?) ?? _mobileController.text.trim(),
+              registrationDate: existingUserData['registration_date'] != null
+                  ? DateTime.parse(existingUserData['registration_date'] as String)
+                  : DateTime.now(),
+              isVerified: true,
+            );
+            
+            // Save existing user to local database
+            await _databaseService.saveUserProfile(userProfile);
+            print('DEBUG: ✅ Existing user profile saved to local database');
+            
+            if (mounted) {
+              setState(() => _isRegistering = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '✅ ${result['message']}\nContinuing with your existing account.',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: AppColors.medicalBlue,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              Navigator.of(context).pushReplacementNamed('/home');
+            }
+            return; // Continue with existing account
+          } catch (e) {
+            print('DEBUG: Error loading existing user: $e');
+            if (mounted) {
+              setState(() => _isRegistering = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error loading existing account: ${e.toString()}'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+            return;
+          }
+        }
+        
+        // If duplicate but no existing user data, show error
         if (result['isDuplicate'] == true) {
           if (mounted) {
             setState(() => _isRegistering = false);
@@ -86,7 +151,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '❌ ${result['message']}\nThis phone number is already in use.',
+                        '❌ ${result['message']}\nUnable to load existing account.',
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
@@ -97,7 +162,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
             );
           }
-          return; // STOP - Don't save locally
+          return;
         }
 
         // Phone number is unique - proceed with local save

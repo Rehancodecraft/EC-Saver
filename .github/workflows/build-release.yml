@@ -60,40 +60,92 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
             TAG_NAME="${TAG_NAME#v}"  # Remove 'v' prefix if present
-            echo "Extracted tag name: $TAG_NAME"
+            echo "📦 Extracted tag name: $TAG_NAME"
             
             # Extract version and build from tag
             if [[ "$TAG_NAME" == *"+"* ]]; then
-              VERSION=$(echo "$TAG_NAME" | cut -d '+' -f1)
-              BUILD=$(echo "$TAG_NAME" | cut -d '+' -f2)
+              VERSION=$(echo "$TAG_NAME" | cut -d '+' -f1 | tr -d ' ')
+              BUILD=$(echo "$TAG_NAME" | cut -d '+' -f2 | tr -d ' ')
+              echo "📦 Tag contains version+build: $VERSION+$BUILD"
             else
-              VERSION="$TAG_NAME"
-              BUILD="1"
+              VERSION=$(echo "$TAG_NAME" | tr -d ' ')
+              # If no build number in tag, check pubspec.yaml for matching version
+              CURRENT_PUBSPEC=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
+              CURRENT_VERSION=$(echo "$CURRENT_PUBSPEC" | cut -d '+' -f1 | tr -d ' ')
+              CURRENT_BUILD=$(echo "$CURRENT_PUBSPEC" | cut -d '+' -f2 | tr -d ' ')
+              
+              if [[ "$CURRENT_VERSION" == "$VERSION" && -n "$CURRENT_BUILD" && "$CURRENT_BUILD" =~ ^[0-9]+$ ]]; then
+                # Version matches, use existing build number
+                BUILD="$CURRENT_BUILD"
+                echo "✅ Version matches pubspec.yaml, using existing build: $BUILD"
+              elif [[ -n "$CURRENT_BUILD" && "$CURRENT_BUILD" =~ ^[0-9]+$ ]]; then
+                # Version changed, increment build number
+                BUILD=$((CURRENT_BUILD + 1))
+                echo "📈 Version changed, incremented build from $CURRENT_BUILD to $BUILD"
+              else
+                BUILD="1"
+                echo "🆕 Using default build number: $BUILD"
+              fi
+            fi
+            
+            # Verify version format
+            if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "❌ ERROR: Invalid version format: $VERSION"
+              exit 1
+            fi
+            
+            if [[ ! "$BUILD" =~ ^[0-9]+$ ]]; then
+              echo "❌ ERROR: Invalid build number: $BUILD"
+              exit 1
             fi
             
             # Update pubspec.yaml with the version from tag
             sed -i "s/^version:.*/version: $VERSION+$BUILD/" pubspec.yaml
             echo "✅ Updated pubspec.yaml to version: $VERSION+$BUILD"
-            cat pubspec.yaml | grep "^version:"
+            
+            # Verify the update
+            UPDATED_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
+            echo "🔍 Verified pubspec.yaml version: $UPDATED_VERSION"
+            
+            if [[ "$UPDATED_VERSION" != "$VERSION+$BUILD" ]]; then
+              echo "❌ ERROR: Version update failed! Expected: $VERSION+$BUILD, Got: $UPDATED_VERSION"
+              exit 1
+            fi
           else
             # Manual trigger or branch push - get from pubspec.yaml
-            echo "No tag found, reading from pubspec.yaml"
+            echo "📄 No tag found, reading from pubspec.yaml"
             VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1 | tr -d ' ')
             BUILD=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f2 | tr -d ' ')
-            echo "Using version from pubspec.yaml: $VERSION+$BUILD"
+            echo "📋 Using version from pubspec.yaml: $VERSION+$BUILD"
           fi
           
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "BUILD=$BUILD" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION (build $BUILD)"
+          echo "🏗️  Building version: $VERSION (build $BUILD)"
+      
+      - name: Verify pubspec version before build
+        run: |
+          echo "🔍 Final version check before build:"
+          cat pubspec.yaml | grep "^version:"
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
+          EXPECTED_VERSION="${{ steps.version.outputs.VERSION }}+${{ steps.version.outputs.BUILD }}"
+          if [[ "$PUBSPEC_VERSION" != "$EXPECTED_VERSION" ]]; then
+            echo "❌ ERROR: Version mismatch!"
+            echo "  Expected: $EXPECTED_VERSION"
+            echo "  Found in pubspec.yaml: $PUBSPEC_VERSION"
+            exit 1
+          fi
+          echo "✅ Version verified: $PUBSPEC_VERSION"
       
       - name: Build APK
         run: |
+          echo "🏗️  Building APK with version ${{ steps.version.outputs.VERSION }}+${{ steps.version.outputs.BUILD }}"
           flutter build apk --release --no-tree-shake-icons
+          echo "✅ Build completed"
         env:
           FLUTTER_BUILD_MODE: release
       
-      - name: Verify APK exists
+      - name: Verify APK exists and check version
         run: |
           if [ ! -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
             echo "❌ APK file not found!"
@@ -102,6 +154,21 @@ jobs:
           fi
           echo "✅ APK file found"
           ls -lh build/app/outputs/flutter-apk/app-release.apk
+          
+          # Extract and verify version from APK (if aapt2 is available)
+          if command -v aapt2 &> /dev/null || [ -f "$ANDROID_HOME/build-tools/*/aapt2" ]; then
+            echo "🔍 Checking APK version..."
+            APK_VERSION=$(aapt2 dump badging build/app/outputs/flutter-apk/app-release.apk 2>/dev/null | grep "versionName" | sed "s/.*versionName='\([^']*\)'.*/\1/" || echo "unknown")
+            APK_BUILD=$(aapt2 dump badging build/app/outputs/flutter-apk/app-release.apk 2>/dev/null | grep "versionCode" | sed "s/.*versionCode='\([^']*\)'.*/\1/" || echo "unknown")
+            echo "📱 APK versionName: $APK_VERSION"
+            echo "📱 APK versionCode: $APK_BUILD"
+            EXPECTED_VERSION="${{ steps.version.outputs.VERSION }}"
+            if [[ "$APK_VERSION" != "$EXPECTED_VERSION" && "$APK_VERSION" != "unknown" ]]; then
+              echo "⚠️  WARNING: APK version ($APK_VERSION) doesn't match expected ($EXPECTED_VERSION)"
+            fi
+          else
+            echo "ℹ️  aapt2 not available, skipping APK version check"
+          fi
       
       - name: Rename APK
         run: |
