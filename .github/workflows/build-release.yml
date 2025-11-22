@@ -38,8 +38,29 @@ jobs:
         run: |
           echo "🔧 Fixing Gradle compatibility issues..."
           
-          # Find app_links plugin and fix it
-          APP_LINKS_DIR=$(find ~/.pub-cache/hosted/pub.dev -name "app_links-*" -type d | head -1)
+          # Wait a moment for pub cache to be fully written
+          sleep 2
+          
+          # Find app_links plugin and fix it (try multiple locations)
+          APP_LINKS_DIR=""
+          
+          # Try pub cache first
+          if [ -d "$HOME/.pub-cache" ]; then
+            APP_LINKS_DIR=$(find "$HOME/.pub-cache" -type d -name "app_links-*" 2>/dev/null | head -1)
+          fi
+          
+          # If not found, try in project's pub cache
+          if [ -z "$APP_LINKS_DIR" ] && [ -d ".dart_tool/pub" ]; then
+            APP_LINKS_DIR=$(find ".dart_tool/pub" -type d -name "app_links-*" 2>/dev/null | head -1)
+          fi
+          
+          # If still not found, try flutter pub cache
+          if [ -z "$APP_LINKS_DIR" ]; then
+            FLUTTER_PUB_CACHE=$(flutter pub cache dir 2>/dev/null || echo "")
+            if [ -n "$FLUTTER_PUB_CACHE" ] && [ -d "$FLUTTER_PUB_CACHE" ]; then
+              APP_LINKS_DIR=$(find "$FLUTTER_PUB_CACHE" -type d -name "app_links-*" 2>/dev/null | head -1)
+            fi
+          fi
           
           if [ -n "$APP_LINKS_DIR" ] && [ -d "$APP_LINKS_DIR" ]; then
             BUILD_GRADLE="$APP_LINKS_DIR/android/build.gradle"
@@ -50,7 +71,7 @@ jobs:
               cp "$BUILD_GRADLE" "$BUILD_GRADLE.bak"
               
               echo "📄 Original build.gradle content:"
-              cat "$BUILD_GRADLE"
+              head -20 "$BUILD_GRADLE"
               
               # Create a completely new build.gradle that's compatible
               cat > "$BUILD_GRADLE" << 'EOF'
@@ -58,7 +79,7 @@ group 'com.llfbandit.app_links'
 version '1.0-SNAPSHOT'
 
 buildscript {
-        ext.kotlin_version = '2.1.0'
+    ext.kotlin_version = '2.1.0'
     repositories {
         google()
         mavenCentral()
@@ -107,13 +128,23 @@ dependencies {
 EOF
               
               echo "✅ Replaced app_links build.gradle with compatible version"
-              echo "📄 New build.gradle content:"
-              cat "$BUILD_GRADLE"
+              echo "📄 New build.gradle content (first 20 lines):"
+              head -20 "$BUILD_GRADLE"
+              
+              # Verify the file was written
+              if [ -f "$BUILD_GRADLE" ] && grep -q "8.9.1" "$BUILD_GRADLE"; then
+                echo "✅ Verification: build.gradle contains AGP 8.9.1"
+              else
+                echo "⚠️  WARNING: build.gradle might not have been updated correctly"
+              fi
             else
               echo "⚠️  build.gradle not found at: $BUILD_GRADLE"
             fi
           else
             echo "⚠️  app_links plugin not found in pub cache"
+            echo "🔍 Searching all possible locations..."
+            find . -type d -name "*app_links*" 2>/dev/null | head -5
+            find ~/.pub-cache -type d -name "*app_links*" 2>/dev/null | head -5 || true
           fi
           
           echo "✅ Plugin compatibility fixes completed"
@@ -228,6 +259,24 @@ EOF
             exit 1
           fi
           echo "✅ Version verified: $PUBSPEC_VERSION"
+      
+      - name: Verify plugin fix before build
+        run: |
+          echo "🔍 Verifying app_links plugin fix..."
+          APP_LINKS_DIR=$(find ~/.pub-cache -type d -name "app_links-*" 2>/dev/null | head -1)
+          if [ -n "$APP_LINKS_DIR" ]; then
+            BUILD_GRADLE="$APP_LINKS_DIR/android/build.gradle"
+            if [ -f "$BUILD_GRADLE" ]; then
+              if grep -q "8.9.1" "$BUILD_GRADLE"; then
+                echo "✅ app_links plugin is fixed (contains AGP 8.9.1)"
+              else
+                echo "⚠️  WARNING: app_links plugin might not be fixed correctly"
+                echo "📄 Current build.gradle content:"
+                head -30 "$BUILD_GRADLE"
+              fi
+            fi
+          fi
+        continue-on-error: true
       
       - name: Build APK
         run: |

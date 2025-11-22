@@ -318,11 +318,15 @@
         async function fetchLatestRelease() {
             try {
                 console.log('🔄 Fetching latest release from GitHub...');
-                const response = await fetch('https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest', {
+                // Add timestamp to prevent caching
+                const timestamp = new Date().getTime();
+                const response = await fetch(`https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest?t=${timestamp}`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/vnd.github.v3+json',
-                        'Cache-Control': 'no-cache' // Prevent caching
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
                     }
                 });
                 
@@ -349,7 +353,7 @@
                     console.log('📦 APK Name:', latestApkName);
                 } else {
                     // Fallback - construct expected APK name
-                    const versionTag = tagName || 'v1.0.7';
+                    const versionTag = tagName || 'v1.0.8';
                     const expectedApkName = `ec-saver-v${versionTag.replace('v', '')}-release.apk`;
                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${versionTag}/${expectedApkName}`;
                     latestApkName = expectedApkName;
@@ -357,7 +361,7 @@
                 }
                 
                 // Update UI with actual version
-                const versionText = tagName || 'v1.0.7';
+                const versionText = tagName || 'v1.0.8';
                 document.getElementById('versionBadge').textContent = `Version: ${versionText}`;
                 console.log(`✅ UI updated to show version: ${versionText}`);
                 
@@ -366,22 +370,61 @@
                 
             } catch (error) {
                 console.error('❌ Fetch failed:', error);
-                // Fallback to latest known version
-                const fallbackVersion = 'v1.0.7';
-                latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.0.7-release.apk`;
-                latestApkName = `ec-saver-v1.0.7-release.apk`;
-                
-                document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion} (checking...)`;
-                document.getElementById('downloadButton').disabled = false;
-                
-                // Show error message to user
-                setTimeout(() => {
-                    const badge = document.getElementById('versionBadge');
-                    if (badge) {
-                        badge.textContent = `Version: ${fallbackVersion}`;
-                        badge.style.color = '#ff6b6b';
+                // Try to fetch all releases and get the latest one
+                fetch('https://api.github.com/repos/Rehancodecraft/EC-Saver/releases', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Cache-Control': 'no-cache'
                     }
-                }, 2000);
+                })
+                .then(response => response.json())
+                .then(releases => {
+                    if (Array.isArray(releases) && releases.length > 0) {
+                        const latestRelease = releases[0];
+                        const tagName = latestRelease.tag_name || 'v1.0.8';
+                        const apkAssets = latestRelease.assets?.filter(asset => asset.name?.endsWith('.apk')) || [];
+                        
+                        if (apkAssets.length > 0) {
+                            latestApkUrl = apkAssets[0].browser_download_url || 
+                                          `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/${apkAssets[0].name}`;
+                            latestApkName = apkAssets[0].name;
+                            document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
+                        } else {
+                            // Fallback to latest known version
+                            const fallbackVersion = 'v1.0.8';
+                            latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/ec-saver-v${tagName.replace('v', '')}-release.apk`;
+                            latestApkName = `ec-saver-v${tagName.replace('v', '')}-release.apk`;
+                            document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
+                        }
+                    } else {
+                        // Final fallback
+                        const fallbackVersion = 'v1.0.8';
+                        latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.0.8-release.apk`;
+                        latestApkName = `ec-saver-v1.0.8-release.apk`;
+                        document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion}`;
+                    }
+                    document.getElementById('downloadButton').disabled = false;
+                })
+                .catch(fallbackError => {
+                    console.error('❌ Fallback fetch also failed:', fallbackError);
+                    // Final fallback to latest known version
+                    const fallbackVersion = 'v1.0.8';
+                    latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.0.8-release.apk`;
+                    latestApkName = `ec-saver-v1.0.8-release.apk`;
+                    
+                    document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion} (offline)`;
+                    document.getElementById('downloadButton').disabled = false;
+                    
+                    // Show error message to user
+                    setTimeout(() => {
+                        const badge = document.getElementById('versionBadge');
+                        if (badge) {
+                            badge.textContent = `Version: ${fallbackVersion}`;
+                            badge.style.color = '#ff6b6b';
+                        }
+                    }, 2000);
+                });
             }
         }
 
