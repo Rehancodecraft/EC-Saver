@@ -91,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(
         parent: _pulseController,
-        curve: Curves.easeInOut,
+      curve: Curves.easeInOut,
       ),
     );
 
@@ -212,9 +212,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           ),
         ),
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
               // Logo with professional animations
               AnimatedBuilder(
                 animation: _logoController,
@@ -225,42 +225,42 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       scale: _logoScaleAnimation.value,
                       child: Transform.rotate(
                         angle: _logoRotationAnimation.value,
-                        child: Container(
+                child: Container(
                           width: 160,
                           height: 160,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                             borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
                                 blurRadius: 30,
                                 spreadRadius: 5,
                                 offset: const Offset(0, 15),
                               ),
                               BoxShadow(
                                 color: Colors.white.withOpacity(0.2),
-                                blurRadius: 20,
+                        blurRadius: 20,
                                 spreadRadius: -5,
                                 offset: const Offset(0, -5),
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(24),
-                          child: Image.asset(
-                            'assets/image/logo.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.local_hospital,
-                                size: 90,
-                                color: AppColors.primaryRed,
-                              );
-                            },
-                          ),
-                        ),
                       ),
-                    ),
+                    ],
+                  ),
+                          padding: const EdgeInsets.all(24),
+                  child: Image.asset(
+                    'assets/image/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.local_hospital,
+                                size: 90,
+                        color: AppColors.primaryRed,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
                   );
                 },
               ),
@@ -272,12 +272,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 position: _textSlideAnimation,
                 child: FadeTransition(
                   opacity: _textFadeAnimation,
-                  child: const Text(
-                    'EC Saver',
-                    style: TextStyle(
+              child: const Text(
+                'EC Saver',
+                style: TextStyle(
                       fontSize: 42,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                  color: Colors.white,
                       letterSpacing: 3,
                       shadows: [
                         Shadow(
@@ -310,12 +310,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         offset: const Offset(0, 2),
                       ),
                     ],
-                  ),
                 ),
               ),
-              
-              const SizedBox(height: 8),
-              
+            ),
+
+            const SizedBox(height: 8),
+            
               // Rescue 1122 Pakistan with fade
               FadeTransition(
                 opacity: _textFadeAnimation,
@@ -330,16 +330,16 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     ),
                   ),
                   child: Text(
-                    'Rescue 1122 Pakistan',
-                    style: TextStyle(
-                      fontSize: 14,
+              'Rescue 1122 Pakistan',
+              style: TextStyle(
+                fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.95),
                       letterSpacing: 1,
                     ),
                   ),
-                ),
               ),
+            ),
 
               const SizedBox(height: 80),
               
@@ -355,15 +355,15 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         width: 40,
                         height: 40,
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           strokeWidth: 3.5,
                         ),
                       ),
                     );
                   },
                 ),
-              ),
-            ],
+            ),
+          ],
           ),
         ),
       ),
