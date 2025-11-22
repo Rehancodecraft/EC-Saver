@@ -355,7 +355,7 @@
                     console.log('📦 Asset browser_download_url:', apkAssets[0].browser_download_url);
                 } else {
                     // Fallback - construct expected APK name
-                    const versionTag = tagName || 'v1.1.0';
+                    const versionTag = tagName || 'v1.1.1';
                     const expectedApkName = `ec-saver-v${versionTag.replace('v', '')}-release.apk`;
                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${versionTag}/${expectedApkName}`;
                     latestApkName = expectedApkName;
@@ -363,7 +363,7 @@
                 }
                 
                 // Update UI with actual version
-                const versionText = tagName || 'v1.1.0';
+                const versionText = tagName || 'v1.1.1';
                 document.getElementById('versionBadge').textContent = `Version: ${versionText}`;
                 console.log(`✅ UI updated to show version: ${versionText}`);
                 
@@ -384,7 +384,7 @@
                 .then(releases => {
                     if (Array.isArray(releases) && releases.length > 0) {
                         const latestRelease = releases[0];
-                        const tagName = latestRelease.tag_name || 'v1.1.0';
+                        const tagName = latestRelease.tag_name || 'v1.1.1';
                         const apkAssets = latestRelease.assets?.filter(asset => asset.name?.endsWith('.apk')) || [];
                         
                         if (apkAssets.length > 0) {
@@ -395,16 +395,16 @@
                             document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
                         } else {
                             // Fallback to latest known version
-                            const fallbackVersion = tagName || 'v1.1.0';
+                            const fallbackVersion = tagName || 'v1.1.1';
                             latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/ec-saver-v${tagName.replace('v', '')}-release.apk`;
                             latestApkName = `ec-saver-v${tagName.replace('v', '')}-release.apk`;
                             document.getElementById('versionBadge').textContent = `Version: ${tagName}`;
                         }
                     } else {
                         // Final fallback
-                        const fallbackVersion = 'v1.1.0';
-                        latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.0-release.apk`;
-                        latestApkName = `ec-saver-v1.1.0-release.apk`;
+                        const fallbackVersion = 'v1.1.1';
+                        latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.1-release.apk`;
+                        latestApkName = `ec-saver-v1.1.1-release.apk`;
                         document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion}`;
                     }
                     document.getElementById('downloadButton').disabled = false;
@@ -412,9 +412,9 @@
                 .catch(fallbackError => {
                     console.error('❌ Fallback fetch also failed:', fallbackError);
                     // Final fallback to latest known version
-                    const fallbackVersion = 'v1.1.0';
-                    latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.0-release.apk`;
-                    latestApkName = `ec-saver-v1.1.0-release.apk`;
+                    const fallbackVersion = 'v1.1.1';
+                    latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${fallbackVersion}/ec-saver-v1.1.1-release.apk`;
+                    latestApkName = `ec-saver-v1.1.1-release.apk`;
                     
                     document.getElementById('versionBadge').textContent = `Version: ${fallbackVersion} (offline)`;
                     document.getElementById('downloadButton').disabled = false;
