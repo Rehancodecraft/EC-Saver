@@ -234,10 +234,17 @@ jobs:
                   BUILD="1"
                   echo "⚠️  Version matches but invalid build number, using: $BUILD"
                 fi
-              # If version doesn't match but build number exists, use it anyway
+              # If version doesn't match, this is a NEW version - use build from pubspec.yaml if it matches the new version
+              # Otherwise, increment from the current build
               elif [[ -n "$CURRENT_BUILD" && "$CURRENT_BUILD" =~ ^[0-9]+$ ]]; then
-                BUILD="$CURRENT_BUILD"
-                echo "📋 Version mismatch but using build from pubspec.yaml: $BUILD"
+                # Check if pubspec.yaml already has the new version (shouldn't happen, but handle it)
+                # For new version, we should use the build number that's already in pubspec.yaml for this version
+                # But since version doesn't match, we need to check if pubspec was already updated
+                # Actually, if we're here, pubspec has old version, so we should use build from pubspec.yaml
+                # But wait - we want to ensure build number increases, so let's increment
+                BUILD=$((CURRENT_BUILD + 1))
+                echo "📋 New version detected ($VERSION vs $CURRENT_VERSION)"
+                echo "📋 Incrementing build number: $CURRENT_BUILD → $BUILD"
               else
                 BUILD="1"
                 echo "🆕 No valid build number found, using default: $BUILD"

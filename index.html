@@ -320,14 +320,19 @@
                 console.log('🔄 Fetching latest release from GitHub...');
                 // Add timestamp to prevent caching
                 const timestamp = new Date().getTime();
-                const response = await fetch(`https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest?t=${timestamp}`, {
+                // Use a more aggressive cache-busting approach
+                const timestamp = new Date().getTime();
+                const random = Math.random().toString(36).substring(7);
+                const response = await fetch(`https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest?t=${timestamp}&r=${random}`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/vnd.github.v3+json',
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
                         'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
+                        'Expires': '0',
+                        'If-None-Match': '' // Force fresh fetch
+                    },
+                    cache: 'no-store' // Explicitly disable caching
                 });
                 
                 if (!response.ok) {
