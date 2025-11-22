@@ -335,13 +335,18 @@
                 if (apkAssets.length > 0) {
                     const tagName = jsonData.tag_name;
                     const apkName = apkAssets[0].name;
+                    // Always use direct download URL format (not browser_download_url to avoid redirects)
+                    // Format: https://github.com/owner/repo/releases/download/tag/filename
                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/${apkName}`;
                     latestApkName = apkName;
+                    console.log('✅ Direct download URL:', latestApkUrl);
+                    console.log('📦 APK Name:', latestApkName);
                 } else {
                     // Fallback
                     const tagName = jsonData.tag_name || 'v1.0.2';
                     latestApkUrl = `https://github.com/Rehancodecraft/EC-Saver/releases/download/${tagName}/ec-saver-${tagName}-release.apk`;
                     latestApkName = `ec-saver-${tagName}-release.apk`;
+                    console.log('🔄 Using fallback URL:', latestApkUrl);
                 }
                 
                 // Update UI
@@ -363,7 +368,7 @@
             }
         }
 
-        // Direct download function - optimized for mobile (NO REDIRECT)
+        // Direct download function - Mobile optimized (NO REDIRECT, NO CORS)
         function initiateDownload() {
             if (downloadInProgress || !latestApkUrl) {
                 if (!latestApkUrl) {
@@ -372,107 +377,114 @@
                 return;
             }
 
+            console.log('🚀 Starting download:', latestApkUrl);
+            
             downloadInProgress = true;
             const downloadBtn = document.getElementById('downloadButton');
             downloadBtn.classList.add('loading');
             downloadBtn.disabled = true;
 
-            // Mobile-optimized: Fetch blob and download directly (NO REDIRECT)
-            // This approach works on all mobile browsers
-            fetch(latestApkUrl, {
-                method: 'GET',
-                mode: 'cors',
-                credentials: 'omit',
-                redirect: 'follow', // Follow redirects but we'll catch them
-                headers: {
-                    'Accept': 'application/vnd.android.package-archive, application/octet-stream, */*'
+            // Mobile-optimized: Use XMLHttpRequest with blob (bypasses CORS, no redirect)
+            // This is the most reliable method for mobile browsers
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', latestApkUrl, true);
+            xhr.responseType = 'blob';
+            
+            xhr.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    console.log('Download progress:', percentComplete.toFixed(1) + '%');
                 }
-            })
-            .then(response => {
-                // Check if we got redirected to GitHub page
-                const contentType = response.headers.get('content-type') || '';
-                const finalUrl = response.url;
-                
-                console.log('Download response:', {
-                    status: response.status,
-                    contentType: contentType,
-                    url: finalUrl,
-                    redirected: response.redirected
-                });
-                
-                // If content-type is HTML, we got redirected to GitHub page
-                if (contentType.includes('text/html') || finalUrl.includes('github.com') && !finalUrl.includes('/releases/download/')) {
-                    throw new Error('Redirected to GitHub page instead of APK');
+            };
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const blob = xhr.response;
+                    
+                    // Verify it's an APK (check size and type)
+                    if (blob.size > 10000) { // APK should be at least 10KB
+                        // Create blob URL
+                        const blobUrl = window.URL.createObjectURL(blob);
+                        
+                        // Create download link
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = latestApkName;
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        
+                        // Trigger download
+                        link.click();
+                        
+                        // Clean up
+                        setTimeout(() => {
+                            if (link.parentNode) {
+                                document.body.removeChild(link);
+                            }
+                            window.URL.revokeObjectURL(blobUrl);
+                        }, 1000);
+                        
+                        // Reset button
+                        downloadBtn.classList.remove('loading');
+                        downloadBtn.disabled = false;
+                        downloadInProgress = false;
+                    } else {
+                        console.error('Downloaded file too small, might be HTML');
+                        fallbackDirectDownload();
+                    }
+                } else {
+                    console.error('XHR failed:', xhr.status);
+                    fallbackDirectDownload();
                 }
+            };
+            
+            xhr.onerror = function() {
+                console.error('XHR network error');
+                fallbackDirectDownload();
+            };
+            
+            xhr.ontimeout = function() {
+                console.error('XHR timeout');
+                fallbackDirectDownload();
+            };
+            
+            xhr.timeout = 120000; // 2 minute timeout for large files
+            
+            // Start download
+            try {
+                xhr.send();
+            } catch (e) {
+                console.error('XHR send error:', e);
+                fallbackDirectDownload();
+            }
+            
+            // Fallback: Direct link method (if XHR fails)
+            function fallbackDirectDownload() {
+                console.log('Using fallback direct download method');
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                return response.blob();
-            })
-            .then(blob => {
-                // Verify it's actually an APK file
-                if (blob.size < 1000) {
-                    throw new Error('Downloaded file is too small, might be HTML redirect');
-                }
-                
-                console.log('Downloaded blob size:', blob.size, 'bytes');
-                
-                // Create blob URL
-                const blobUrl = window.URL.createObjectURL(blob);
-                
-                // Method 1: Create download link with download attribute
+                // Create direct download link
                 const link = document.createElement('a');
-                link.href = blobUrl;
+                link.href = latestApkUrl;
                 link.download = latestApkName;
                 link.style.display = 'none';
                 link.setAttribute('download', latestApkName);
-                link.setAttribute('type', 'application/vnd.android.package-archive');
-                
-                // Add to DOM temporarily
                 document.body.appendChild(link);
                 
                 // Trigger download
-                const clickEvent = new MouseEvent('click', {
-                    view: window,
-                    bubbles: true,
-                    cancelable: true
-                });
-                link.dispatchEvent(clickEvent);
-                
-                // Also try programmatic click as backup
                 link.click();
                 
                 // Clean up
                 setTimeout(() => {
-                    try {
-                        if (link.parentNode) {
-                            document.body.removeChild(link);
-                        }
-                        window.URL.revokeObjectURL(blobUrl);
-                    } catch (e) {
-                        console.warn('Cleanup error:', e);
+                    if (link.parentNode) {
+                        document.body.removeChild(link);
                     }
-                }, 2000);
+                }, 1000);
                 
                 // Reset button
-                setTimeout(() => {
-                    downloadBtn.classList.remove('loading');
-                    downloadBtn.disabled = false;
-                    downloadInProgress = false;
-                }, 1500);
-            })
-            .catch(error => {
-                console.error('Download error:', error);
-                
-                // Show user-friendly error
                 downloadBtn.classList.remove('loading');
                 downloadBtn.disabled = false;
                 downloadInProgress = false;
-                
-                alert('Download failed. Please check your internet connection and try again.\n\nError: ' + error.message);
-            });
+            }
         }
 
         // Initialize on page load
