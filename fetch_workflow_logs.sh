@@ -21,17 +21,17 @@ if ! gh auth status &> /dev/null; then
 fi
 
 REPO="Rehancodecraft/EC-Saver"
-WORKFLOW="Build and Release APK"
+WORKFLOW_FILE=".github/workflows/build-release.yml"
 
 echo "📋 Listing latest workflow runs..."
 echo ""
 
 # List latest runs
-gh run list --workflow "$WORKFLOW" -R "$REPO" --limit 5
+gh run list --workflow "$WORKFLOW_FILE" -R "$REPO" --limit 5
 
 echo ""
 echo "📥 Fetching latest run details..."
-LATEST_RUN=$(gh run list --workflow "$WORKFLOW" -R "$REPO" --limit 1 --json databaseId,conclusion,status,createdAt,headBranch,displayTitle --jq '.[0]')
+LATEST_RUN=$(gh run list --workflow "$WORKFLOW_FILE" -R "$REPO" --limit 1 --json databaseId,conclusion,status,createdAt,headBranch,displayTitle --jq '.[0]')
 
 if [ -z "$LATEST_RUN" ] || [ "$LATEST_RUN" == "null" ]; then
     echo "❌ No workflow runs found!"

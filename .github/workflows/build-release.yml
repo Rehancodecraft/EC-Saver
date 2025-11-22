@@ -88,58 +88,58 @@ jobs:
                 head -20 "$BUILD_GRADLE"
                 
                 # Create a completely new build.gradle that's compatible
-                cat > "$BUILD_GRADLE" << 'EOF'
-group 'com.llfbandit.app_links'
-version '1.0-SNAPSHOT'
-
-buildscript {
-    ext.kotlin_version = '2.1.0'
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-
-android {
-    compileSdk 34
-    namespace "com.llfbandit.app_links"
-    
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
-    
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
-    
-    defaultConfig {
-        minSdk 21
-    }
-}
-
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-}
-EOF
+                # Using printf to avoid YAML parsing issues with heredoc
+                printf '%s\n' \
+                  "group 'com.llfbandit.app_links'" \
+                  "version '1.0-SNAPSHOT'" \
+                  "" \
+                  "buildscript {" \
+                  "    ext.kotlin_version = '2.1.0'" \
+                  "    repositories {" \
+                  "        google()" \
+                  "        mavenCentral()" \
+                  "    }" \
+                  "    dependencies {" \
+                  "        classpath 'com.android.tools.build:gradle:8.9.1'" \
+                  "        classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version\"" \
+                  "    }" \
+                  "}" \
+                  "" \
+                  "allprojects {" \
+                  "    repositories {" \
+                  "        google()" \
+                  "        mavenCentral()" \
+                  "    }" \
+                  "}" \
+                  "" \
+                  "apply plugin: 'com.android.library'" \
+                  "apply plugin: 'kotlin-android'" \
+                  "" \
+                  "android {" \
+                  "    compileSdk 34" \
+                  "    namespace \"com.llfbandit.app_links\"" \
+                  "    " \
+                  "    compileOptions {" \
+                  "        sourceCompatibility JavaVersion.VERSION_1_8" \
+                  "        targetCompatibility JavaVersion.VERSION_1_8" \
+                  "    }" \
+                  "    " \
+                  "    kotlinOptions {" \
+                  "        jvmTarget = '1.8'" \
+                  "    }" \
+                  "    " \
+                  "    sourceSets {" \
+                  "        main.java.srcDirs += 'src/main/kotlin'" \
+                  "    }" \
+                  "    " \
+                  "    defaultConfig {" \
+                  "        minSdk 21" \
+                  "    }" \
+                  "}" \
+                  "" \
+                  "dependencies {" \
+                  "    implementation \"org.jetbrains.kotlin:kotlin-stdlib-jdk7:\$kotlin_version\"" \
+                  "}" > "$BUILD_GRADLE"
                 
                 echo "✅ Replaced app_links build.gradle with compatible version"
                 
