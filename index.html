@@ -310,9 +310,10 @@
     </div>
 
     <script>
-        let latestApkUrl = null;
-        let latestApkName = 'ec-saver.apk';
+        let latestApkUrl = 'https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.2/ec-saver-v1.1.2-release.apk'; // Fallback URL
+        let latestApkName = 'ec-saver-v1.1.2-release.apk'; // Fallback name
         let downloadInProgress = false;
+        let versionLoaded = false;
 
         // Fetch latest release on page load
         async function fetchLatestRelease() {
@@ -491,21 +492,17 @@
                 return;
             }
             
+            // Always use fallback URL if main URL is not available
             if (!latestApkUrl) {
-                console.error('❌ No download URL available');
-                alert('Download link not ready. Please wait a moment and try again.');
-                // Try to fetch again
-                console.log('🔄 Attempting to fetch release again...');
-                try {
-                    await fetchLatestRelease();
-                } catch (error) {
-                    console.error('❌ Fetch failed:', error);
-                    alert('Unable to fetch download link. Please try again later or download from GitHub releases.');
-                }
-                if (!latestApkUrl) {
-                    console.error('❌ Still no URL after retry');
-                    return;
-                }
+                console.warn('⚠️  No download URL, using fallback');
+                latestApkUrl = 'https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.2/ec-saver-v1.1.2-release.apk';
+                latestApkName = 'ec-saver-v1.1.2-release.apk';
+            }
+            
+            // If version not loaded yet, try to fetch (but don't block download)
+            if (!versionLoaded) {
+                console.log('🔄 Version not loaded yet, attempting fetch in background...');
+                fetchLatestRelease().catch(err => console.error('Background fetch failed:', err));
             }
 
             console.log('🚀 Starting download:', latestApkUrl);
@@ -523,8 +520,8 @@
                 const response = await fetch(latestApkUrl, {
                     method: 'GET',
                     redirect: 'follow', // Follow redirects automatically
-                    cache: 'no-cache',
-                    mode: 'cors' // Enable CORS
+                    cache: 'no-cache'
+                    // Don't set mode: 'cors' - let browser handle it automatically
                 });
 
                 console.log('📥 Response status:', response.status, response.statusText);
@@ -677,26 +674,32 @@
                 return;
             }
             
-            // Set initial state
+            // Set initial state - BUT enable download button immediately with fallback
             versionBadge.textContent = 'Version: Loading...';
-            downloadBtn.disabled = true;
+            downloadBtn.disabled = false; // Enable immediately with fallback URL
+            console.log('✅ Download button enabled with fallback URL:', latestApkUrl);
             
-            // Fetch latest release immediately
+            // Fetch latest release in background (non-blocking)
             console.log('📡 Starting fetch...');
-            fetchLatestRelease().catch(error => {
+            fetchLatestRelease().then(() => {
+                versionLoaded = true;
+                console.log('✅ Version loaded successfully');
+            }).catch(error => {
                 console.error('❌ Failed to fetch release:', error);
                 const badge = document.getElementById('versionBadge');
-                const btn = document.getElementById('downloadButton');
                 if (badge) {
                     badge.textContent = 'Version: v1.1.2 (offline)';
                     badge.style.color = '#ff6b6b';
+                    // Remove error color after 3 seconds
+                    setTimeout(() => {
+                        if (badge) {
+                            badge.style.color = '';
+                            badge.textContent = 'Version: v1.1.2';
+                        }
+                    }, 3000);
                 }
-                if (btn) {
-                    btn.disabled = false;
-                }
-                // Set fallback URL
-                latestApkUrl = 'https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.2/ec-saver-v1.1.2-release.apk';
-                latestApkName = 'ec-saver-v1.1.2-release.apk';
+                // Fallback URL is already set, so download button still works
+                versionLoaded = true;
             });
         }
         
@@ -712,25 +715,21 @@
             initializePage();
         }
         
-        // Fallback: Retry after delay if still not loaded
+        // Fallback: Show version after timeout if still loading
         setTimeout(() => {
             const badge = document.getElementById('versionBadge');
             if (badge && badge.textContent === 'Version: Loading...') {
-                console.log('⚠️  Still loading after 3 seconds, retrying...');
+                console.log('⚠️  Still loading after 3 seconds, showing fallback version');
+                badge.textContent = 'Version: v1.1.2';
+                // Ensure download button is enabled
+                const btn = document.getElementById('downloadButton');
+                if (btn) {
+                    btn.disabled = false;
+                }
+                // Ensure fallback URL is set
                 if (!latestApkUrl) {
-                    fetchLatestRelease().catch(error => {
-                        console.error('❌ Retry failed:', error);
-                        if (badge) {
-                            badge.textContent = 'Version: v1.1.2 (offline)';
-                            badge.style.color = '#ff6b6b';
-                        }
-                        const btn = document.getElementById('downloadButton');
-                        if (btn) {
-                            btn.disabled = false;
-                        }
-                        latestApkUrl = 'https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.2/ec-saver-v1.1.2-release.apk';
-                        latestApkName = 'ec-saver-v1.1.2-release.apk';
-                    });
+                    latestApkUrl = 'https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.2/ec-saver-v1.1.2-release.apk';
+                    latestApkName = 'ec-saver-v1.1.2-release.apk';
                 }
             }
         }, 3000);
