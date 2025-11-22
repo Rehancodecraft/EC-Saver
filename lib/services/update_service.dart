@@ -86,25 +86,40 @@ class UpdateService {
       
       // Find APK asset (look for .apk file)
       String apkUrl = '';
+      String apkName = '';
       if (data['assets'] != null && (data['assets'] as List).isNotEmpty) {
         for (var asset in data['assets'] as List) {
-          final assetName = (asset['name'] ?? '').toString().toLowerCase();
-          if (assetName.endsWith('.apk')) {
+          final assetName = (asset['name'] ?? '').toString();
+          if (assetName.toLowerCase().endsWith('.apk')) {
             apkUrl = asset['browser_download_url'] ?? '';
+            apkName = assetName;
+            print('DEBUG: UpdateService - Found APK: $apkName');
+            print('DEBUG: UpdateService - APK URL: $apkUrl');
             break;
           }
         }
         // Fallback to first asset if no APK found
         if (apkUrl.isEmpty) {
           apkUrl = data['assets']![0]['browser_download_url'] ?? '';
+          apkName = (data['assets']![0]['name'] ?? '').toString();
+          print('DEBUG: UpdateService - Using fallback APK: $apkName');
         }
+      } else {
+        print('DEBUG: UpdateService - WARNING: No assets found in release!');
+      }
+      
+      if (apkUrl.isEmpty) {
+        print('DEBUG: UpdateService - ERROR: No APK URL found!');
       }
       
       final releaseNotes = (data['body'] ?? '').toString();
       final forceUpdate = _isForceUpdate(releaseNotes);
 
       print('DEBUG: UpdateService - Latest version: $latestVersion, build: $latestBuild');
+      print('DEBUG: UpdateService - Latest tag: $tagName');
       print('DEBUG: UpdateService - APK URL: $apkUrl');
+      print('DEBUG: UpdateService - APK Name: $apkName');
+      print('DEBUG: UpdateService - Current version: $currentVersion, build: $currentBuild');
 
       // Compare versions: first by version string, then by build number
       bool updateAvailable = false;
@@ -235,6 +250,12 @@ class UpdateService {
 
     print('DEBUG: APK downloaded successfully to: $filePath');
     print('DEBUG: File size: ${await file.length()} bytes');
+    print('DEBUG: Download URL was: $downloadUrl');
+    
+    // Verify the downloaded file is actually an APK
+    if (!filePath.toLowerCase().endsWith('.apk')) {
+      print('WARNING: Downloaded file does not have .apk extension!');
+    }
 
     // Small delay to ensure file is fully written
     await Future.delayed(const Duration(milliseconds: 500));
