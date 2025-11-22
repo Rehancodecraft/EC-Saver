@@ -34,6 +34,34 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       
+      - name: Fix Gradle compatibility issues
+        run: |
+          echo "🔧 Fixing Gradle compatibility issues..."
+          
+          # Run the fix script if it exists
+          if [ -f "android/fix_plugins.sh" ]; then
+            bash android/fix_plugins.sh
+          else
+            # Fallback: Fix app_links directly
+            echo "Using fallback fix method..."
+            find ~/.pub-cache/hosted/pub.dev -name "app_links-*" -type d | while read plugin_dir; do
+              build_gradle="$plugin_dir/android/build.gradle"
+              if [ -f "$build_gradle" ]; then
+                echo "Fixing: $build_gradle"
+                cp "$build_gradle" "$build_gradle.bak"
+                sed -i 's/flutter\.compileSdk/34/g' "$build_gradle" || true
+                sed -i 's/flutter\.minSdkVersion/21/g' "$build_gradle" || true
+                sed -i 's/flutter\.targetSdkVersion/34/g' "$build_gradle" || true
+                if grep -q "android {" "$build_gradle" && ! grep -q "compileSdk" "$build_gradle"; then
+                  sed -i '/android {/a\    compileSdk 34' "$build_gradle"
+                fi
+                echo "✅ Fixed: $build_gradle"
+              fi
+            done
+          fi
+          
+          echo "✅ Plugin compatibility fixes completed"
+      
       - name: Verify Flutter setup
         run: flutter doctor -v
       
@@ -74,17 +102,25 @@ jobs:
               CURRENT_VERSION=$(echo "$CURRENT_PUBSPEC" | cut -d '+' -f1 | tr -d ' ')
               CURRENT_BUILD=$(echo "$CURRENT_PUBSPEC" | cut -d '+' -f2 | tr -d ' ')
               
-              if [[ "$CURRENT_VERSION" == "$VERSION" && -n "$CURRENT_BUILD" && "$CURRENT_BUILD" =~ ^[0-9]+$ ]]; then
-                # Version matches, use existing build number
-                BUILD="$CURRENT_BUILD"
-                echo "✅ Version matches pubspec.yaml, using existing build: $BUILD"
+              echo "🔍 Checking pubspec.yaml: version=$CURRENT_VERSION, build=$CURRENT_BUILD"
+              echo "🔍 Tag version: $VERSION"
+              
+              # Priority: Use build number from pubspec.yaml if version matches
+              if [[ "$CURRENT_VERSION" == "$VERSION" ]]; then
+                if [[ -n "$CURRENT_BUILD" && "$CURRENT_BUILD" =~ ^[0-9]+$ ]]; then
+                  BUILD="$CURRENT_BUILD"
+                  echo "✅ Version matches pubspec.yaml, using build: $BUILD"
+                else
+                  BUILD="1"
+                  echo "⚠️  Version matches but invalid build number, using: $BUILD"
+                fi
+              # If version doesn't match but build number exists, use it anyway
               elif [[ -n "$CURRENT_BUILD" && "$CURRENT_BUILD" =~ ^[0-9]+$ ]]; then
-                # Version changed, increment build number
-                BUILD=$((CURRENT_BUILD + 1))
-                echo "📈 Version changed, incremented build from $CURRENT_BUILD to $BUILD"
+                BUILD="$CURRENT_BUILD"
+                echo "📋 Version mismatch but using build from pubspec.yaml: $BUILD"
               else
                 BUILD="1"
-                echo "🆕 Using default build number: $BUILD"
+                echo "🆕 No valid build number found, using default: $BUILD"
               fi
             fi
             
