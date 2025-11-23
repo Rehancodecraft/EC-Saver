@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/user_profile.dart';
 import '../services/database_service.dart';
 import '../utils/constants.dart';
@@ -14,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   int _todayCount = 0;
   int _monthlyCount = 0;
+  int _monthlyLeaves = 0;
   bool _isLoading = true;
   UserProfile? _userProfile;
   late AnimationController _animationController;
@@ -92,9 +94,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         e.emergencyDate.isAfter(monthStart) && e.emergencyDate.isBefore(monthEnd)
       ).length;
       
+      // Get all off days and count leaves for current month
+      final allOffDays = await dbService.getOffDays();
+      final monthlyLeaves = allOffDays.where((offDay) {
+        // Check if it's in current month
+        final isInMonth = offDay.offDate.isAfter(monthStart.subtract(const Duration(days: 1))) &&
+                          offDay.offDate.isBefore(monthEnd.add(const Duration(days: 1)));
+        // Check if it's a Leave (notes starts with "Leave")
+        final isLeave = offDay.notes != null && offDay.notes!.startsWith('Leave');
+        return isInMonth && isLeave;
+      }).length;
+      
       setState(() {
         _todayCount = todayEmergencies;
         _monthlyCount = monthlyEmergencies;
+        _monthlyLeaves = monthlyLeaves;
         _isLoading = false;
       });
     } catch (e) {
@@ -102,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       setState(() {
         _todayCount = 0;
         _monthlyCount = 0;
+        _monthlyLeaves = 0;
         _isLoading = false;
       });
     }
@@ -163,16 +178,62 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           // Main Content
           Column(
             children: [
-              // Stats Header Bar
+              // Current Month & Date Header
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryRed.withOpacity(0.05),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey[200]!, width: 1),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, color: AppColors.primaryRed, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('MMMM yyyy').format(DateTime.now()),
+                          style: TextStyle(
+                            color: AppColors.primaryRed,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, color: Colors.grey[600], size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          DateFormat('EEEE, dd MMMM yyyy').format(DateTime.now()),
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Stats Header Bar
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Row(
                   children: [
                     Icon(Icons.bar_chart, color: Colors.grey[700], size: 22),
                     const SizedBox(width: 12),
                     const Text(
-                      'Monthly Statistics Overview',
+                      'Statistics Overview',
                       style: TextStyle(
                         color: Colors.black,
                         fontSize: 16,
@@ -194,80 +255,78 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Stats Cards Row (Today & This Month)
-                      Row(
-                        children: [
-                          // Today Card
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[300]!),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
+                      // Stats Cards - Today's Entries
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[300]!),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryRed.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryRed.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(
-                                          Icons.today,
-                                          color: AppColors.primaryRed,
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Text(
-                                          'Today',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  child: const Icon(
+                                    Icons.today,
+                                    color: AppColors.primaryRed,
+                                    size: 24,
                                   ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    '$_todayCount',
-                                    style: const TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primaryRed,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Cases',
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    'Today\'s Entries',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 14,
                                       color: Colors.grey,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '$_todayCount',
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryRed,
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Emergency Cases',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                          const SizedBox(width: 16),
+                      const SizedBox(height: 16),
 
-                          // This Month's Card
+                      // Stats Cards Row (This Month Entries & Leaves)
+                      Row(
+                        children: [
+                          // This Month's Entries Card
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(16),
@@ -278,8 +337,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.grey.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
@@ -295,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: const Icon(
-                                          Icons.calendar_month,
+                                          Icons.emergency,
                                           color: AppColors.secondaryGreen,
                                           size: 24,
                                         ),
@@ -324,7 +383,77 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   ),
                                   const SizedBox(height: 4),
                                   const Text(
-                                    'Cases',
+                                    'Total Entries',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 16),
+
+                          // This Month's Leaves Card
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey[300]!),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.beach_access,
+                                          color: Colors.orange,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Expanded(
+                                        child: Text(
+                                          'This Month',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    '$_monthlyLeaves',
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Total Leaves',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey,
