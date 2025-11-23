@@ -192,8 +192,10 @@ class PdfService {
 
                 // Off Days Section
                 if (offDays.isNotEmpty) ...[
-                  pw.SizedBox(height: 20),
-                  pw.Divider(thickness: 1),
+                  if (emergencies.isNotEmpty) ...[
+                    pw.SizedBox(height: 20),
+                    pw.Divider(thickness: 1),
+                  ],
                   pw.SizedBox(height: 12),
                   pw.Text(
                     'Off Days, Leaves & Gazetted Holidays',
@@ -222,7 +224,7 @@ class PdfService {
                         ],
                       ),
                       // Data Rows
-                      ...groupedOffDays[month]!.map((offDay) {
+                      ...offDays.map((offDay) {
                         String offDayType = 'Off Day';
                         if (offDay.notes != null) {
                           if (offDay.notes!.startsWith('Leave')) {
