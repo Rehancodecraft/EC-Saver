@@ -255,6 +255,14 @@ class DatabaseService {
       }
     }
 
+    // Delete off days for this month
+    final offDays = await getOffDays();
+    for (final offDay in offDays) {
+      if (offDay.getMonthYear() == monthYear) {
+        await db.delete('off_days', where: 'id = ?', whereArgs: [offDay.id]);
+      }
+    }
+
     await db.delete('monthly_stats', where: 'month_year = ?', whereArgs: [monthYear]);
   }
 

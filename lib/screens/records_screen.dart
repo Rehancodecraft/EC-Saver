@@ -108,8 +108,11 @@ class _RecordsScreenState extends State<RecordsScreen> {
         groupedOffDays[monthYear]!.add(offDay);
       }
 
-      // Extract months that have data and sort DESCENDING (newest first)
-      final uniqueMonths = grouped.keys.toList();
+      // Extract months that have data (emergencies OR off days) and sort DESCENDING (newest first)
+      final Set<String> uniqueMonthsSet = {};
+      uniqueMonthsSet.addAll(grouped.keys);
+      uniqueMonthsSet.addAll(groupedOffDays.keys);
+      final uniqueMonths = uniqueMonthsSet.toList();
       uniqueMonths.sort((a, b) {
         final dateA = DateFormat('MMMM yyyy').parse(a);
         final dateB = DateFormat('MMMM yyyy').parse(b);
@@ -254,18 +257,29 @@ class _RecordsScreenState extends State<RecordsScreen> {
     return '${monthNames[month - 1]} $year';
   }
 
-  Future<void> _deleteMonthRecords(String monthYear) async {
-    final monthStats = _groupedEmergencies[monthYear];
-    if (monthStats == null) return;
+    Future<void> _deleteMonthRecords(String monthYear) async {
+    final monthStats = _groupedEmergencies[monthYear] ?? [];
+    final monthOffDays = _groupedOffDays[monthYear] ?? [];
+    
+    if (monthStats.isEmpty && monthOffDays.isEmpty) return;
+
+    final emergencyCount = monthStats.length;
+    final offDayCount = monthOffDays.length;
+    String message = '';
+    
+    if (emergencyCount > 0 && offDayCount > 0) {
+      message = 'Are you sure you want to delete all $emergencyCount emergency record${emergencyCount > 1 ? 's' : ''} and $offDayCount off day${offDayCount > 1 ? 's' : ''} from ${_formatMonthYear(monthYear)}? This action cannot be undone.';
+    } else if (emergencyCount > 0) {
+      message = 'Are you sure you want to delete all $emergencyCount emergency record${emergencyCount > 1 ? 's' : ''} from ${_formatMonthYear(monthYear)}? This action cannot be undone.';
+    } else if (offDayCount > 0) {
+      message = 'Are you sure you want to delete all $offDayCount off day${offDayCount > 1 ? 's' : ''} from ${_formatMonthYear(monthYear)}? This action cannot be undone.';
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Month Records'),
-        content: Text(
-          'Are you sure you want to delete all ${monthStats.length} emergencies from '
-          '${_formatMonthYear(monthYear)}? This action cannot be undone.',
-        ),
+        content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -290,7 +304,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Final Confirmation'),
         content: const Text(
-          'This will permanently delete all records. Are you absolutely sure?',
+          'This will permanently delete all records and off days. Are you absolutely sure?',
         ),
         actions: [
           TextButton(
@@ -316,7 +330,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${_formatMonthYear(monthYear)} records deleted'),
+            content: Text('${_formatMonthYear(monthYear)} records and off days deleted'),
             backgroundColor: AppColors.successGreen,
           ),
         );
@@ -441,6 +455,61 @@ class _RecordsScreenState extends State<RecordsScreen> {
               backgroundColor: AppColors.successGreen,
             ),
           );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteOffDay(OffDay offDay) async {
+    // Parse type label for confirmation message
+    String typeLabel = 'off day';
+    if (offDay.notes != null && offDay.notes!.isNotEmpty) {
+      final notesParts = offDay.notes!.split(' - ');
+      typeLabel = notesParts[0].trim().toLowerCase();
+    }
+    
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Off Day'),
+        content: Text('Are you sure you want to delete this $typeLabel?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        if (offDay.id != null) {
+          await _databaseService.deleteOffDay(offDay.id!);
+          await _loadRecords(); // Reload after delete
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Off day deleted successfully'),
+                backgroundColor: AppColors.successGreen,
+              ),
+            );
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -775,8 +844,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        // Delete Button
-                                        if (hasRecords)
+                                        // Delete Button (show if has records OR off days)
+                                        if (hasRecords || (_groupedOffDays[month]?.isNotEmpty ?? false))
                                           IconButton(
                                             icon: const Icon(Icons.delete_outline),
                                             color: AppColors.errorRed,
@@ -787,8 +856,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                     ),
                                   ),
                                   
-                                  // Records List
-                                  if (hasRecords)
+                                  // Records List (show if has records OR off days)
+                                  if (hasRecords || (_groupedOffDays[month]?.isNotEmpty ?? false))
                                     Padding(
                                       padding: const EdgeInsets.all(12),
                                       child: Column(
@@ -887,20 +956,38 @@ class _RecordsScreenState extends State<RecordsScreen> {
               ),
               if (offDay != null) ...[
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'OFF DAY',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    // Parse the type from notes
+                    String badgeText = 'OFF DAY';
+                    if (offDay.notes != null && offDay.notes!.isNotEmpty) {
+                      final notesParts = offDay.notes!.split(' - ');
+                      final typeLabel = notesParts[0].trim();
+                      // Map to badge text
+                      if (typeLabel == 'Leave') {
+                        badgeText = 'LEAVE';
+                      } else if (typeLabel == 'Gazetted Holiday') {
+                        badgeText = 'GAZETTED HOLIDAY';
+                      } else if (typeLabel == 'Day-off') {
+                        badgeText = 'DAY-OFF';
+                      }
+                    }
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
               const Spacer(),
@@ -920,6 +1007,21 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
       // Show off day info if it's an off day
       if (offDay != null) {
+        // Parse the type from notes (format: "Type - additional notes" or just "Type")
+        String typeLabel = 'Day-off'; // Default
+        String? additionalNotes;
+        
+        if (offDay.notes != null && offDay.notes!.isNotEmpty) {
+          final notesParts = offDay.notes!.split(' - ');
+          typeLabel = notesParts[0].trim();
+          if (notesParts.length > 1) {
+            additionalNotes = notesParts.sublist(1).join(' - ').trim();
+          }
+        }
+        
+        // Determine display text based on type
+        String displayText = '$typeLabel - No Entries';
+        
         widgets.add(
           Container(
             margin: const EdgeInsets.only(bottom: 8),
@@ -937,18 +1039,18 @@ class _RecordsScreenState extends State<RecordsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Off Day - No Entries',
-                        style: TextStyle(
+                      Text(
+                        displayText,
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Colors.orange,
                         ),
                       ),
-                      if (offDay.notes != null && offDay.notes!.isNotEmpty) ...[
+                      if (additionalNotes != null && additionalNotes.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          offDay.notes!,
+                          additionalNotes,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[700],
@@ -957,6 +1059,14 @@ class _RecordsScreenState extends State<RecordsScreen> {
                       ],
                     ],
                   ),
+                ),
+                // Delete button for off day
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  onPressed: () => _deleteOffDay(offDay),
+                  tooltip: 'Delete ${typeLabel.toLowerCase()}',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
