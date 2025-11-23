@@ -43,7 +43,58 @@ class PdfService {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-                      pw.SizedBox(height: 8),
+                      pw.SizedBox(height: 12),
+                      
+                      // User Information Section
+                      if (userProfile != null) ...[
+                        pw.Container(
+                          padding: const pw.EdgeInsets.all(12),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.grey200,
+                            borderRadius: pw.BorderRadius.circular(8),
+                          ),
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(
+                                'Rescuer Information',
+                                style: pw.TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.grey800,
+                                ),
+                              ),
+                              pw.SizedBox(height: 8),
+                              pw.Row(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Expanded(
+                                    child: pw.Column(
+                                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                      children: [
+                                        _buildInfoRow('Name:', userProfile.fullName),
+                                        _buildInfoRow('Designation:', userProfile.designation),
+                                        _buildInfoRow('Phone:', userProfile.mobileNumber),
+                                      ],
+                                    ),
+                                  ),
+                                  pw.Expanded(
+                                    child: pw.Column(
+                                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                      children: [
+                                        _buildInfoRow('District:', userProfile.district),
+                                        _buildInfoRow('Tehsil:', userProfile.tehsil),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        pw.SizedBox(height: 12),
+                      ],
+                      
                       pw.Text(
                         month,
                         style: pw.TextStyle(
