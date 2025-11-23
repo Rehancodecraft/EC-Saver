@@ -1,7 +1,7 @@
 name: emergency_cases_saver
 description: EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan
 
-version: 1.1.8+18  # v1.1.8 - Test release for update system
+version: 1.1.9+19  # v1.1.9 - Fixed FileProvider path mismatch for APK installation
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

@@ -3,10 +3,11 @@
     <!-- ✅ VERIFIED: Paths for FileProvider -->
     <external-path name="external_files" path="." />
     <external-files-path name="external_app_files" path="." />
+    <!-- Cache directory for APK updates (getTemporaryDirectory() maps here) -->
+    <!-- This maps to /data/data/package/cache/ -->
     <cache-path name="cache" path="." />
+    <cache-path name="updates" path="updates/" />
     <external-path name="downloads" path="Download/" />
-    <!-- App-specific files directory for APK updates -->
+    <!-- App-specific files directory (backup option) -->
     <files-path name="files" path="." />
-    <!-- Include updates subdirectory -->
-    <files-path name="updates" path="updates/" />
 </paths>

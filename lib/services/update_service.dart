@@ -188,9 +188,11 @@ class UpdateService {
       }
     }
 
-    // Use app-specific external directory (works on all Android versions)
-    final appDir = await getApplicationDocumentsDirectory();
-    final updateDir = Directory(p.join(appDir.path, 'updates'));
+    // Use cache directory which FileProvider can access
+    // getTemporaryDirectory() returns /data/data/package/cache/ on Android
+    // This matches the cache-path in file_paths.xml
+    final cacheDir = await getTemporaryDirectory();
+    final updateDir = Directory(p.join(cacheDir.path, 'updates'));
     if (!await updateDir.exists()) {
       await updateDir.create(recursive: true);
     }
