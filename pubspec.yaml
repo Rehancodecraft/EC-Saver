@@ -1,7 +1,7 @@
 name: emergency_cases_saver
 description: EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan
 
-version: 1.1.7+17  # v1.1.7 - Fixed connection closed error with retry logic
+version: 1.1.8+18  # v1.1.8 - Test release for update system
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
