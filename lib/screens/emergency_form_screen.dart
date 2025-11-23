@@ -68,11 +68,17 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   }
 
   Future<void> _selectDate() async {
+    // For emergency entries: no future dates allowed
+    // For off days/leaves/gazetted holidays: allow future dates (up to 1 year ahead)
+    final DateTime maxDate = _entryType == 'emergency' 
+        ? DateTime.now() 
+        : DateTime.now().add(const Duration(days: 365));
+    
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: maxDate,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
