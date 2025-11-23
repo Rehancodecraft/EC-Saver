@@ -129,6 +129,31 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
           }
           return;
         }
+      } else {
+        // For off days/leave/gazetted: Check if date already has an emergency entry
+        final emergencies = await _databaseService.getAllEmergencies();
+        final hasEmergency = emergencies.any((e) {
+          final eDate = e.emergencyDate;
+          return eDate.year == picked.year &&
+                 eDate.month == picked.month &&
+                 eDate.day == picked.day;
+        });
+        
+        if (hasEmergency) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'This date already has an emergency entry. Cannot mark as ${_entryType == 'off-day' ? 'off day' : _entryType == 'leave' ? 'leave' : 'gazetted day'}.',
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+        // Note: We allow updating existing off days (no check needed)
       }
 
       setState(() {

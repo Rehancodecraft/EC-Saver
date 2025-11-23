@@ -115,10 +115,16 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> _checkForUpdatesAndProceed() async {
     await Future.delayed(const Duration(milliseconds: 1500));
     try {
+      // Force fresh read of PackageInfo to get latest installed version
+      // This ensures we read the correct version after app update
       final pkg = await PackageInfo.fromPlatform();
-      final currentVersion = pkg.version;
-      final currentBuild = int.tryParse(pkg.buildNumber) ?? 1;
+      final currentVersion = pkg.version.trim();
+      final currentBuild = int.tryParse(pkg.buildNumber.trim()) ?? 1;
       print('DEBUG: Splash - Current version: $currentVersion, build: $currentBuild');
+      print('DEBUG: Splash - PackageInfo details:');
+      print('  version: ${pkg.version}');
+      print('  buildNumber: ${pkg.buildNumber}');
+      print('  packageName: ${pkg.packageName}');
 
       final prefs = await SharedPreferences.getInstance();
       final dismissed = prefs.getString('dismissed_update_version');

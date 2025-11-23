@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
 import '../widgets/drawer_menu.dart';
 
@@ -14,6 +16,8 @@ class AboutScreen extends StatefulWidget {
 class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStateMixin {
   String _version = 'Loading...';
   String _buildNumber = '';
+  String _latestVersion = '';
+  bool _isCheckingUpdate = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -22,6 +26,7 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _loadVersionInfo();
+    _fetchLatestVersion();
     
     // Animation setup - optimized
     _animationController = AnimationController(
@@ -54,7 +59,7 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
 
   Future<void> _loadVersionInfo() async {
     try {
-      // Force fresh read - don't cache
+      // Force fresh read - create new instance to avoid caching
       final packageInfo = await PackageInfo.fromPlatform();
       
       // Debug logging to verify what we're reading
@@ -82,6 +87,43 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
         setState(() {
           _version = 'Unknown';
           _buildNumber = '';
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchLatestVersion() async {
+    if (_isCheckingUpdate) return;
+    
+    setState(() {
+      _isCheckingUpdate = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest'),
+        headers: {'Accept': 'application/vnd.github.v3+json'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final tagName = (data['tag_name'] ?? '').toString();
+        // Remove 'v' prefix if present
+        final version = tagName.replaceAll('v', '').trim();
+        
+        if (mounted) {
+          setState(() {
+            _latestVersion = version;
+            _isCheckingUpdate = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('DEBUG: About Screen - Failed to fetch latest version: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingUpdate = false;
         });
       }
     }
@@ -145,7 +187,7 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
             ),
             const SizedBox(height: AppSpacing.sm),
 
-                // Version - Now dynamic
+                // Version - Now dynamic with latest version from GitHub
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
@@ -164,23 +206,64 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                       width: 1,
                     ),
               ),
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.info_outline,
-                        color: AppColors.primaryRed,
-                        size: 18,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: AppColors.primaryRed,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Version $_version${_buildNumber.isNotEmpty && _buildNumber != '0' ? '+$_buildNumber' : ''}',
+                            style: const TextStyle(
+                              color: AppColors.primaryRed,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          IconButton(
+                            icon: _isCheckingUpdate
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primaryRed,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.refresh,
+                                    size: 16,
+                                    color: AppColors.primaryRed,
+                                  ),
+                            onPressed: _isCheckingUpdate
+                                ? null
+                                : () {
+                                    _loadVersionInfo();
+                                    _fetchLatestVersion();
+                                  },
+                            tooltip: 'Refresh version',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Version $_version${_buildNumber.isNotEmpty && _buildNumber != '0' ? '+$_buildNumber' : ''}',
-                        style: const TextStyle(
-                          color: AppColors.primaryRed,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                      if (_latestVersion.isNotEmpty && _latestVersion != _version) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Latest: v$_latestVersion',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
               ),
             ),

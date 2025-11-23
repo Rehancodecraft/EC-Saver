@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/constants.dart';
 import '../services/database_service.dart';
 import '../models/user_profile.dart';
@@ -17,11 +18,13 @@ class DrawerMenu extends StatefulWidget {
 
 class _DrawerMenuState extends State<DrawerMenu> {
   UserProfile? _userProfile;
+  String _appVersion = 'Loading...';
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
+    _loadAppVersion();
   }
 
   Future<void> _loadUserProfile() async {
@@ -29,6 +32,19 @@ class _DrawerMenuState extends State<DrawerMenu> {
     setState(() {
       _userProfile = profile;
     });
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _appVersion = 'v${packageInfo.version}';
+      });
+    } catch (e) {
+      setState(() {
+        _appVersion = 'v1.0.0';
+      });
+    }
   }
 
   @override
@@ -215,7 +231,7 @@ class _DrawerMenuState extends State<DrawerMenu> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Version 1.0.0',
+                  _appVersion,
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontSize: 10,
