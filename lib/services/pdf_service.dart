@@ -105,13 +105,22 @@ class PdfService {
                         ),
                       ),
                       pw.SizedBox(height: 4),
-                      pw.Text(
-                        'Total Records: ${emergencies.length}',
-                        style: const pw.TextStyle(
-                          fontSize: 12,
-                          color: PdfColors.grey600,
+                      if (emergencies.isNotEmpty)
+                        pw.Text(
+                          'Total Emergency Records: ${emergencies.length}',
+                          style: const pw.TextStyle(
+                            fontSize: 12,
+                            color: PdfColors.grey600,
+                          ),
                         ),
-                      ),
+                      if (offDays.isNotEmpty)
+                        pw.Text(
+                          'Total Off Days: ${offDays.length}',
+                          style: const pw.TextStyle(
+                            fontSize: 12,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
                       pw.SizedBox(height: 4),
                       pw.Text(
                         'Generated: ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}',
