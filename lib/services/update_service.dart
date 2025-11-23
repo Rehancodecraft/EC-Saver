@@ -280,23 +280,10 @@ class UpdateService {
       print('DEBUG: Installer opened successfully via native method');
     } catch (e) {
       print('DEBUG: Native install method failed: $e');
-      print('DEBUG: Falling back to OpenFile method...');
+      print('DEBUG: Error details: ${e.toString()}');
       
-      // Fallback to OpenFile if method channel fails
-      try {
-        final openFile = await import('package:open_file/open_file.dart');
-        final result = await openFile.OpenFile.open(filePath);
-        
-        if (result.type != openFile.ResultType.done && 
-            result.type != openFile.ResultType.noAppToOpen) {
-          print('DEBUG: OpenFile result: ${result.type}, message: ${result.message}');
-          throw Exception('Failed to open installer: ${result.message}');
-        }
-        print('DEBUG: Installer opened via OpenFile fallback');
-      } catch (fallbackError) {
-        print('DEBUG: OpenFile fallback also failed: $fallbackError');
-        throw Exception('Failed to install APK: $fallbackError');
-      }
+      // Re-throw with better error message
+      throw Exception('Failed to open installer. Please check if installation permission is granted.\nError: $e');
     }
   }
 }
