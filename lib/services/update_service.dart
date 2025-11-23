@@ -362,17 +362,31 @@ class UpdateService {
 
     // Verify the downloaded file is actually an APK
     if (!filePath.toLowerCase().endsWith('.apk')) {
-      print('WARNING: Downloaded file does not have .apk extension!');
+      throw Exception('Downloaded file does not have .apk extension. File may be corrupted.');
+    }
+
+    // Final verification before installation
+    final finalFileSize = await file.length();
+    print('DEBUG: Final APK verification:');
+    print('DEBUG: - File path: $filePath');
+    print('DEBUG: - File size: $finalFileSize bytes');
+    print('DEBUG: - File exists: ${await file.exists()}');
+    print('DEBUG: - File readable: ${await file.exists()}');
+
+    // Verify file is not corrupted (basic check)
+    if (finalFileSize < 1000000) {
+      throw Exception('APK file is too small (${finalFileSize} bytes). File may be corrupted or incomplete.');
     }
 
     // Use native method channel for installation (more reliable than OpenFile)
     try {
       const platform = MethodChannel('apk_installer');
+      print('DEBUG: Calling native install method with path: $filePath');
       final result = await platform.invokeMethod('installApk', {'filePath': filePath});
       print('DEBUG: Native install method result: $result');
       
       if (result != true) {
-        throw Exception('Installation failed: Native method returned false');
+        throw Exception('Installation failed: Native method returned false. Please check installation permissions.');
       }
       
       print('DEBUG: Installer opened successfully via native method');
@@ -380,8 +394,19 @@ class UpdateService {
       print('DEBUG: Native install method failed: $e');
       print('DEBUG: Error details: ${e.toString()}');
       
-      // Re-throw with better error message
-      throw Exception('Failed to open installer. Please check if installation permission is granted.\nError: $e');
+      // Provide helpful error messages based on error type
+      final errorMsg = e.toString();
+      if (errorMsg.contains('FileProvider') || errorMsg.contains('configured root')) {
+        throw Exception('File access error: The APK file cannot be accessed. This may be a system configuration issue.\n\nError: $e');
+      } else if (errorMsg.contains('permission') || errorMsg.contains('Permission')) {
+        throw Exception('Permission denied: Please grant "Install unknown apps" permission for EC Saver in your device settings.\n\nError: $e');
+      } else if (errorMsg.contains('corrupted') || errorMsg.contains('Invalid APK')) {
+        throw Exception('APK verification failed: The downloaded file appears to be corrupted. Please try downloading again.\n\nError: $e');
+      } else if (errorMsg.contains('No app found')) {
+        throw Exception('Installation app not found: Your device does not have a package installer. Please install apps from Google Play Store.\n\nError: $e');
+      } else {
+        throw Exception('Installation failed: Please check if installation permission is granted and try again.\n\nError: $e');
+      }
     }
   }
 }

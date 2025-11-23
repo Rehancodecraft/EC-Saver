@@ -69,5 +69,22 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        
+        <!-- Package installer for Android 11+ (API 30+) -->
+        <package android:name="com.android.packageinstaller" />
+        <package android:name="com.google.android.packageinstaller" />
+        <package android:name="com.samsung.android.packageinstaller" />
+        <package android:name="com.miui.packageinstaller" />
+        <package android:name="com.huawei.packageinstaller" />
+        <package android:name="com.oppo.packageinstaller" />
+        <package android:name="com.vivo.packageinstaller" />
+        <package android:name="com.oneplus.packageinstaller" />
+        
+        <!-- Generic package installer intent -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" />
+            <data android:mimeType="application/vnd.android.package-archive" />
+        </intent>
     </queries>
 </manifest>

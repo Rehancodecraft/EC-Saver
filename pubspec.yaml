@@ -1,7 +1,7 @@
 name: emergency_cases_saver
 description: EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan
 
-version: 1.2.0+20  # v1.2.0 - Test release for update system
+version: 1.2.1+21  # v1.2.1 - Fixed "APP not installed" error with comprehensive fixes
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
