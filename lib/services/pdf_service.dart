@@ -4,12 +4,16 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import '../models/emergency.dart';
+import '../models/off_day.dart';
+import '../models/user_profile.dart';
 
 class PdfService {
   static Future<void> generateAndPrintPdf({
     required Map<String, List<Emergency>> groupedEmergencies,
     required List<String> selectedMonths,
     required String title,
+    UserProfile? userProfile,
+    Map<String, List<OffDay>>? groupedOffDays,
   }) async {
     final pdf = pw.Document();
 
@@ -113,6 +117,62 @@ class PdfService {
                   ],
                 ),
 
+                // Off Days Section
+                if (groupedOffDays != null && groupedOffDays[month] != null && groupedOffDays[month]!.isNotEmpty) ...[
+                  pw.SizedBox(height: 20),
+                  pw.Divider(thickness: 1),
+                  pw.SizedBox(height: 12),
+                  pw.Text(
+                    'Off Days, Leaves & Gazetted Holidays',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey800,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    columnWidths: {
+                      0: const pw.FlexColumnWidth(2),
+                      1: const pw.FlexColumnWidth(3),
+                    },
+                    children: [
+                      // Header Row
+                      pw.TableRow(
+                        decoration: const pw.BoxDecoration(
+                          color: PdfColors.grey300,
+                        ),
+                        children: [
+                          _buildTableCell('Date', isHeader: true),
+                          _buildTableCell('Type', isHeader: true),
+                        ],
+                      ),
+                      // Data Rows
+                      ...groupedOffDays[month]!.map((offDay) {
+                        String offDayType = 'Off Day';
+                        if (offDay.notes != null) {
+                          if (offDay.notes!.startsWith('Leave')) {
+                            offDayType = 'Leave';
+                          } else if (offDay.notes!.startsWith('Gazetted Holiday')) {
+                            offDayType = 'Gazetted Holiday';
+                          } else if (offDay.notes!.startsWith('Day-off')) {
+                            offDayType = 'Day-off';
+                          }
+                        }
+                        return pw.TableRow(
+                          children: [
+                            _buildTableCell(
+                              DateFormat('dd MMM yyyy').format(offDay.offDate),
+                            ),
+                            _buildTableCell(offDayType),
+                          ],
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ],
+
                 pw.Spacer(),
 
                 // Footer
@@ -149,6 +209,35 @@ class PdfService {
           fontSize: isHeader ? 11 : 10,
           fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
         ),
+      ),
+    );
+  }
+
+  static pw.Widget _buildInfoRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 4),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey700,
+            ),
+          ),
+          pw.SizedBox(width: 8),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: const pw.TextStyle(
+                fontSize: 10,
+                color: PdfColors.grey800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

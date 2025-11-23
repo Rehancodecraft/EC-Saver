@@ -563,10 +563,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
   Future<void> _printAllMonths() async {
     try {
+      final userProfile = await _databaseService.getUserProfile();
       await PdfService.generateAndPrintPdf(
         groupedEmergencies: _groupedEmergencies,
         selectedMonths: _allMonths,
         title: 'All Records',
+        userProfile: userProfile,
+        groupedOffDays: _groupedOffDays,
       );
     } catch (e) {
       if (mounted) {
@@ -634,10 +637,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
     if (result == true && selectedMonths.isNotEmpty) {
       try {
+        final userProfile = await _databaseService.getUserProfile();
         await PdfService.generateAndPrintPdf(
           groupedEmergencies: _groupedEmergencies,
           selectedMonths: selectedMonths,
           title: 'Selected Months',
+          userProfile: userProfile,
+          groupedOffDays: _groupedOffDays,
         );
       } catch (e) {
         if (mounted) {
