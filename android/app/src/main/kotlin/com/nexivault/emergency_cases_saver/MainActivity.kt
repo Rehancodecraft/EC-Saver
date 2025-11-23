@@ -2,6 +2,7 @@ package com.nexivault.emergency_cases_saver
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -19,8 +20,12 @@ class MainActivity: FlutterActivity() {
             if (call.method == "installApk") {
                 val filePath = call.argument<String>("filePath")
                 if (filePath != null) {
-                    installApk(filePath)
-                    result.success(true)
+                    try {
+                        installApk(filePath)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("INSTALL_FAILED", "Failed to install APK: ${e.message}", null)
+                    }
                 } else {
                     result.error("INVALID_PATH", "File path is null", null)
                 }
@@ -32,20 +37,39 @@ class MainActivity: FlutterActivity() {
 
     private fun installApk(filePath: String) {
         val file = File(filePath)
-        if (!file.exists()) return
+        if (!file.exists()) {
+            throw Exception("APK file does not exist: $filePath")
+        }
 
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        if (!file.canRead()) {
+            throw Exception("Cannot read APK file: $filePath")
+        }
 
-        val apkUri = FileProvider.getUriForFile(
-            this,
-            "${applicationContext.packageName}.fileprovider",
-            file
-        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            
+            val apkUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // Use FileProvider for Android 7.0+ (API 24+)
+                FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "${applicationContext.packageName}.fileprovider",
+                    file
+                )
+            } else {
+                // For older Android versions, use file:// URI
+                Uri.fromFile(file)
+            }
 
-        intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
-        startActivity(intent)
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+        }
+
+        // Verify intent can be handled
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        } else {
+            throw Exception("No app found to handle APK installation")
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

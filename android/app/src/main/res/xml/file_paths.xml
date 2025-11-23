@@ -7,4 +7,6 @@
     <external-path name="downloads" path="Download/" />
     <!-- App-specific files directory for APK updates -->
     <files-path name="files" path="." />
+    <!-- Include updates subdirectory -->
+    <files-path name="updates" path="updates/" />
 </paths>

@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:open_file/open_file.dart';
 
 class UpdateService {
   // Configure your repo here
@@ -260,17 +260,43 @@ class UpdateService {
     // Small delay to ensure file is fully written
     await Future.delayed(const Duration(milliseconds: 500));
 
-    // Open file for installation
-    // OpenFile will use FileProvider automatically on Android 7.0+
-    final result = await OpenFile.open(filePath);
-    
-    // Check result - ResultType.done means success
-    if (result.type != ResultType.done && result.type != ResultType.noAppToOpen) {
-      print('DEBUG: OpenFile result: ${result.type}, message: ${result.message}');
-      // Even if result is not "done", the file might still open
-      // Android package installer should handle it
+    // Verify file exists and has content
+    final fileSize = await file.length();
+    print('DEBUG: APK file size: $fileSize bytes');
+    if (fileSize < 1000000) { // Less than 1MB is suspicious
+      throw Exception('Downloaded APK file is too small (${fileSize} bytes). File may be corrupted.');
     }
 
-    print('DEBUG: Installer opened successfully');
+    // Use native method channel for installation (more reliable than OpenFile)
+    try {
+      const platform = MethodChannel('apk_installer');
+      final result = await platform.invokeMethod('installApk', {'filePath': filePath});
+      print('DEBUG: Native install method result: $result');
+      
+      if (result != true) {
+        throw Exception('Installation failed: Native method returned false');
+      }
+      
+      print('DEBUG: Installer opened successfully via native method');
+    } catch (e) {
+      print('DEBUG: Native install method failed: $e');
+      print('DEBUG: Falling back to OpenFile method...');
+      
+      // Fallback to OpenFile if method channel fails
+      try {
+        final openFile = await import('package:open_file/open_file.dart');
+        final result = await openFile.OpenFile.open(filePath);
+        
+        if (result.type != openFile.ResultType.done && 
+            result.type != openFile.ResultType.noAppToOpen) {
+          print('DEBUG: OpenFile result: ${result.type}, message: ${result.message}');
+          throw Exception('Failed to open installer: ${result.message}');
+        }
+        print('DEBUG: Installer opened via OpenFile fallback');
+      } catch (fallbackError) {
+        print('DEBUG: OpenFile fallback also failed: $fallbackError');
+        throw Exception('Failed to install APK: $fallbackError');
+      }
+    }
   }
 }
