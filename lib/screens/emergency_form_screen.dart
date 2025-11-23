@@ -144,7 +144,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'This date already has an emergency entry. Cannot mark as ${_entryType == 'off-day' ? 'off day' : _entryType == 'leave' ? 'leave' : 'gazetted day'}.',
+                  'This date already has an emergency entry. Cannot mark as ${_entryType == 'off-day' ? 'day-off' : _entryType == 'leave' ? 'leave' : 'gazetted holiday'}.',
                 ),
                 backgroundColor: Colors.orange,
                 duration: const Duration(seconds: 3),
@@ -292,13 +292,13 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
         String typeLabel = '';
         switch (_entryType) {
           case 'off-day':
-            typeLabel = 'Off-Day';
+            typeLabel = 'Day-off';
             break;
           case 'leave':
             typeLabel = 'Leave';
             break;
           case 'gazetted-day':
-            typeLabel = 'Gazetted Day';
+            typeLabel = 'Gazetted Holiday';
             break;
         }
 
@@ -386,7 +386,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
                     ),
                     DropdownMenuItem(
                       value: 'off-day',
-                      child: Text('Off-Day'),
+                      child: Text('Day-off'),
                     ),
                     DropdownMenuItem(
                       value: 'leave',
@@ -394,7 +394,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
                     ),
                     DropdownMenuItem(
                       value: 'gazetted-day',
-                      child: Text('Gazetted Day'),
+                      child: Text('Gazetted Holiday'),
                     ),
                   ],
                   onChanged: (value) {
@@ -419,7 +419,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
                   decoration: InputDecoration(
                     labelText: 'EC Number',
                     prefixIcon: const Icon(Icons.numbers),
-                    hintText: _entryType == 'emergency' ? '123456' : 'Not required for ${_entryType == 'off-day' ? 'Off-Day' : _entryType == 'leave' ? 'Leave' : 'Gazetted Day'}',
+                    hintText: _entryType == 'emergency' ? '123456' : 'Not required for ${_entryType == 'off-day' ? 'Day-off' : _entryType == 'leave' ? 'Leave' : 'Gazetted Holiday'}',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -587,7 +587,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
                               Text(
                                 _entryType == 'emergency'
                                     ? (_hasInput ? 'SAVE EMERGENCY' : 'FILL FORM TO SAVE')
-                                    : (_hasInput ? 'SAVE ${_entryType == 'off-day' ? 'OFF-DAY' : _entryType == 'leave' ? 'LEAVE' : 'GAZETTED DAY'}' : 'SELECT DATE TO SAVE'),
+                                    : (_hasInput ? 'SAVE ${_entryType == 'off-day' ? 'DAY-OFF' : _entryType == 'leave' ? 'LEAVE' : 'GAZETTED HOLIDAY'}' : 'SELECT DATE TO SAVE'),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
