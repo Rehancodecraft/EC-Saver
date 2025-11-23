@@ -20,7 +20,9 @@ class PdfService {
     // Add pages for each selected month
     for (final month in selectedMonths) {
       final emergencies = groupedEmergencies[month] ?? [];
-      if (emergencies.isEmpty) continue;
+      final offDays = groupedOffDays?[month] ?? [];
+      // Include page if there are emergencies OR off days
+      if (emergencies.isEmpty && offDays.isEmpty) continue;
 
       pdf.addPage(
         pw.Page(
@@ -125,51 +127,62 @@ class PdfService {
                 pw.Divider(thickness: 2),
                 pw.SizedBox(height: 16),
 
-                // Table
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey400),
-                  columnWidths: {
-                    0: const pw.FixedColumnWidth(30),
-                    1: const pw.FlexColumnWidth(2),
-                    2: const pw.FlexColumnWidth(2),
-                    3: const pw.FlexColumnWidth(3),
-                  },
-                  children: [
-                    // Header Row
-                    pw.TableRow(
-                      decoration: const pw.BoxDecoration(
-                        color: PdfColors.grey300,
-                      ),
-                      children: [
-                        _buildTableCell('#', isHeader: true),
-                        _buildTableCell('EC Number', isHeader: true),
-                        _buildTableCell('Date', isHeader: true),
-                        _buildTableCell('Type', isHeader: true),
-                      ],
+                // Emergency Records Table
+                if (emergencies.isNotEmpty) ...[
+                  pw.Text(
+                    'Emergency Records',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey800,
                     ),
-                    // Data Rows
-                    ...emergencies.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final emergency = entry.value;
-                      return pw.TableRow(
-                        decoration: pw.BoxDecoration(
-                          color: index % 2 == 0 ? PdfColors.white : PdfColors.grey100,
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    columnWidths: {
+                      0: const pw.FixedColumnWidth(30),
+                      1: const pw.FlexColumnWidth(2),
+                      2: const pw.FlexColumnWidth(2),
+                      3: const pw.FlexColumnWidth(3),
+                    },
+                    children: [
+                      // Header Row
+                      pw.TableRow(
+                        decoration: const pw.BoxDecoration(
+                          color: PdfColors.grey300,
                         ),
                         children: [
-                          _buildTableCell('${index + 1}'),
-                          _buildTableCell(emergency.ecNumber),
-                          _buildTableCell(
-                            DateFormat('dd MMM yyyy').format(emergency.emergencyDate),
-                          ),
-                          _buildTableCell(emergency.emergencyType),
+                          _buildTableCell('#', isHeader: true),
+                          _buildTableCell('EC Number', isHeader: true),
+                          _buildTableCell('Date', isHeader: true),
+                          _buildTableCell('Type', isHeader: true),
                         ],
-                      );
-                    }).toList(),
-                  ],
-                ),
+                      ),
+                      // Data Rows
+                      ...emergencies.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final emergency = entry.value;
+                        return pw.TableRow(
+                          decoration: pw.BoxDecoration(
+                            color: index % 2 == 0 ? PdfColors.white : PdfColors.grey100,
+                          ),
+                          children: [
+                            _buildTableCell('${index + 1}'),
+                            _buildTableCell(emergency.ecNumber),
+                            _buildTableCell(
+                              DateFormat('dd MMM yyyy').format(emergency.emergencyDate),
+                            ),
+                            _buildTableCell(emergency.emergencyType),
+                          ],
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ],
 
                 // Off Days Section
-                if (groupedOffDays != null && groupedOffDays[month] != null && groupedOffDays[month]!.isNotEmpty) ...[
+                if (offDays.isNotEmpty) ...[
                   pw.SizedBox(height: 20),
                   pw.Divider(thickness: 1),
                   pw.SizedBox(height: 12),
