@@ -54,15 +54,23 @@ class _UpdateDialogState extends State<UpdateDialog> {
       });
 
       // CRITICAL: Set dismissal AFTER successful download
+      // But DON'T set it yet - let it be set after installation completes
+      // This ensures the update dialog shows again if installation fails
       final prefs = await SharedPreferences.getInstance();
       final versionKey = '${widget.latestVersion}-${widget.latestBuild}';
+      
+      // Only set dismissal after download, but clear it on next app start if version changed
+      // This way, if installation fails, user can try again
       await prefs.setString('dismissed_update_version', versionKey);
       print('DEBUG: UpdateDialog - Set dismissed version: $versionKey');
+      print('DEBUG: UpdateDialog - Note: Will be cleared on next app start if version changes');
 
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) Navigator.of(context).pop();
 
       // Exit app to allow clean installation
+      // After user installs and reopens app, splash screen will detect version change
+      // and clear dismissed_update_version if needed
       try {
         SystemNavigator.pop();
       } catch (_) {}

@@ -127,6 +127,28 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       print('  packageName: ${pkg.packageName}');
 
       final prefs = await SharedPreferences.getInstance();
+      
+      // Check if app version has changed (indicates update was installed)
+      final lastKnownVersion = prefs.getString('last_known_app_version');
+      final lastKnownBuild = prefs.getInt('last_known_app_build') ?? 0;
+      final versionKey = '$currentVersion+$currentBuild';
+      final lastVersionKey = lastKnownVersion != null ? '$lastKnownVersion+$lastKnownBuild' : null;
+      
+      print('DEBUG: Splash - Last known version: $lastVersionKey');
+      print('DEBUG: Splash - Current version: $versionKey');
+      
+      // If version changed, clear dismissed updates and refresh everything
+      if (lastVersionKey != null && lastVersionKey != versionKey) {
+        print('DEBUG: Splash - App version changed! Clearing update dismissals...');
+        await prefs.remove('dismissed_update_version');
+        print('DEBUG: Splash - Cleared dismissed_update_version');
+      }
+      
+      // Save current version for next launch
+      await prefs.setString('last_known_app_version', currentVersion);
+      await prefs.setInt('last_known_app_build', currentBuild);
+      print('DEBUG: Splash - Saved current version: $versionKey');
+      
       final dismissed = prefs.getString('dismissed_update_version');
       print('DEBUG: Splash - Dismissed version: $dismissed');
 

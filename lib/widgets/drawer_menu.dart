@@ -36,15 +36,25 @@ class _DrawerMenuState extends State<DrawerMenu> {
 
   Future<void> _loadAppVersion() async {
     try {
+      // Force fresh read - create new instance to avoid caching
       final packageInfo = await PackageInfo.fromPlatform();
+      final version = packageInfo.version.trim();
+      final build = packageInfo.buildNumber.trim();
       setState(() {
-        _appVersion = 'v${packageInfo.version}';
+        _appVersion = 'v$version${build.isNotEmpty && build != '0' ? '+$build' : ''}';
       });
+      print('DEBUG: DrawerMenu - Loaded version: $_appVersion');
     } catch (e) {
+      print('DEBUG: DrawerMenu - Error loading version: $e');
       setState(() {
         _appVersion = 'v1.0.0';
       });
     }
+  }
+  
+  // Method to refresh version (can be called after update)
+  void refreshVersion() {
+    _loadAppVersion();
   }
 
   @override

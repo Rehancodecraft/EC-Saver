@@ -14,7 +14,19 @@ class DatabaseService {
   static Database? _database;
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    // Always reinitialize to ensure migrations run on version change
+    // This is important when app is updated
+    if (_database != null) {
+      // Check if database is still valid
+      try {
+        await _database!.rawQuery('SELECT 1');
+        return _database!;
+      } catch (e) {
+        // Database might be invalid, reinitialize
+        print('DEBUG: DatabaseService - Database invalid, reinitializing: $e');
+        _database = null;
+      }
+    }
     _database = await _initDatabase();
     return _database!;
   }

@@ -50,6 +50,13 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
     
     _animationController.forward();
   }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh version when screen becomes visible (after app update)
+    _loadVersionInfo();
+  }
 
   @override
   void dispose() {
@@ -60,6 +67,7 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
   Future<void> _loadVersionInfo() async {
     try {
       // Force fresh read - create new instance to avoid caching
+      // This is critical after app updates
       final packageInfo = await PackageInfo.fromPlatform();
       
       // Debug logging to verify what we're reading
@@ -69,16 +77,24 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
       debugPrint('  appName: ${packageInfo.appName}');
       debugPrint('  packageName: ${packageInfo.packageName}');
       
+      final newVersion = packageInfo.version.trim();
+      final newBuild = packageInfo.buildNumber.trim();
+      
       if (mounted) {
         setState(() {
           // PackageInfo reads from the actual installed app's AndroidManifest.xml
           // This should show the version that was used when the APK was built
-          _version = packageInfo.version.trim();
-          _buildNumber = packageInfo.buildNumber.trim();
+          _version = newVersion;
+          _buildNumber = newBuild;
         });
         
         // Verify what we set
         debugPrint('DEBUG: About Screen - Displaying version: $_version+$_buildNumber');
+        
+        // If version changed, refresh latest version from GitHub
+        if (_latestVersion.isEmpty || _latestVersion != newVersion) {
+          _fetchLatestVersion();
+        }
       }
     } catch (e, stackTrace) {
       debugPrint('ERROR: About Screen - Failed to load version info: $e');
