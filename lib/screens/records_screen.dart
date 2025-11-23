@@ -257,7 +257,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
     return '${monthNames[month - 1]} $year';
   }
 
-    Future<void> _deleteMonthRecords(String monthYear) async {
+  Future<void> _deleteMonthRecords(String monthYear) async {
     final monthStats = _groupedEmergencies[monthYear] ?? [];
     final monthOffDays = _groupedOffDays[monthYear] ?? [];
     
@@ -992,14 +992,14 @@ class _RecordsScreenState extends State<RecordsScreen> {
               ],
               const Spacer(),
               if (records.isNotEmpty)
-                Text(
-                  '${records.length} record${records.length > 1 ? 's' : ''}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w500,
-                  ),
+              Text(
+                '${records.length} record${records.length > 1 ? 's' : ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
             ],
           ),
         ),
@@ -1076,8 +1076,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
       // Table for this date (only if there are records)
       if (records.isNotEmpty) {
-        widgets.add(
-          Container(
+      widgets.add(
+        Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
@@ -1169,7 +1169,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
             ],
           ),
         ),
-        );
+      );
       }
     }
 

@@ -42,8 +42,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
         (progress) {
           if (mounted) {
             setState(() {
-              _progress = progress;
-              _status = 'Downloading ${(progress * 100).toStringAsFixed(0)}%';
+              if (progress < 0) {
+                // Retry in progress
+                _progress = 0.0;
+                _status = 'Connection issue. Retrying...';
+              } else {
+                _progress = progress;
+                _status = 'Downloading ${(progress * 100).toStringAsFixed(0)}%';
+              }
             });
           }
         },

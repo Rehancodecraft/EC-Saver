@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -187,27 +188,6 @@ class UpdateService {
       }
     }
 
-    // Download APK
-    final uri = Uri.parse(downloadUrl);
-    final client = http.Client();
-    http.StreamedResponse response;
-    
-    try {
-      response = await client.send(http.Request('GET', uri))
-          .timeout(const Duration(minutes: 10));
-    } catch (e) {
-      client.close();
-      throw Exception('Failed to download APK: $e');
-    }
-
-    if (response.statusCode != 200) {
-      client.close();
-      throw Exception('Failed to download APK: HTTP ${response.statusCode}');
-    }
-
-    final contentLength = response.contentLength ?? 0;
-    int received = 0;
-
     // Use app-specific external directory (works on all Android versions)
     final appDir = await getApplicationDocumentsDirectory();
     final updateDir = Directory(p.join(appDir.path, 'updates'));
@@ -225,46 +205,162 @@ class UpdateService {
       } catch (_) {}
     }
 
-    // Download with progress tracking
-    final sink = file.openWrite();
-    try {
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (contentLength > 0) {
-          onProgress(received / contentLength);
-        } else {
-          // If content length is unknown, show indeterminate progress
-          onProgress(received > 0 ? 0.5 : 0);
+    // Download with retry logic
+    const maxRetries = 3;
+    int retryCount = 0;
+    Exception? lastError;
+
+    while (retryCount < maxRetries) {
+      try {
+        print('DEBUG: Download attempt ${retryCount + 1}/$maxRetries');
+        
+        // Create a new client for each attempt
+        final client = http.Client();
+        http.StreamedResponse? response;
+        
+        try {
+          final uri = Uri.parse(downloadUrl);
+          final request = http.Request('GET', uri);
+          
+          // Add headers for better connection handling
+          request.headers.addAll({
+            'Connection': 'keep-alive',
+            'Accept': '*/*',
+            'User-Agent': 'EC-Saver-Updater/1.0',
+          });
+
+          // Send request with separate connection and read timeouts
+          response = await client.send(request).timeout(
+            const Duration(minutes: 15), // Total timeout
+            onTimeout: () {
+              client.close();
+              throw TimeoutException('Connection timeout after 15 minutes');
+            },
+          );
+
+          if (response.statusCode != 200) {
+            client.close();
+            throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+          }
+
+          final contentLength = response.contentLength ?? 0;
+          int received = 0;
+
+          // Download with progress tracking and chunk timeout
+          final sink = file.openWrite();
+          bool downloadSuccess = false;
+          
+          try {
+            // Use a timeout for reading each chunk to detect connection issues early
+            await for (final chunk in response.stream.timeout(
+              const Duration(seconds: 30), // Timeout for each chunk read
+              onTimeout: (sink) {
+                throw TimeoutException('Connection closed: No data received for 30 seconds');
+              },
+            )) {
+              sink.add(chunk);
+              received += chunk.length;
+              
+              if (contentLength > 0) {
+                onProgress(received / contentLength);
+              } else {
+                // If content length is unknown, show progress based on received bytes
+                // Assume typical APK size of ~20MB for progress estimation
+                const estimatedSize = 20 * 1024 * 1024; // 20MB
+                onProgress((received / estimatedSize).clamp(0.0, 0.95));
+              }
+            }
+            downloadSuccess = true;
+          } catch (e) {
+            await sink.close();
+            client.close();
+            // Delete partial file
+            if (await file.exists()) {
+              try {
+                await file.delete();
+              } catch (_) {}
+            }
+            throw e;
+          } finally {
+            if (downloadSuccess) {
+              await sink.close();
+            }
+            client.close();
+          }
+
+          // Verify download completed
+          if (!await file.exists() || await file.length() == 0) {
+            throw Exception('Downloaded file is missing or empty');
+          }
+
+          final fileSize = await file.length();
+          print('DEBUG: APK downloaded successfully to: $filePath');
+          print('DEBUG: File size: $fileSize bytes');
+          print('DEBUG: Expected size: $contentLength bytes');
+          
+          // Verify file size matches (if content length was provided)
+          if (contentLength > 0 && fileSize != contentLength) {
+            print('WARNING: File size mismatch. Expected: $contentLength, Got: $fileSize');
+            // Still proceed if file is reasonably sized
+            if (fileSize < contentLength * 0.9) {
+              throw Exception('Download incomplete: Expected $contentLength bytes, got $fileSize bytes');
+            }
+          }
+
+          // Verify minimum file size
+          if (fileSize < 1000000) { // Less than 1MB is suspicious
+            throw Exception('Downloaded APK file is too small (${fileSize} bytes). File may be corrupted.');
+          }
+
+          // Small delay to ensure file is fully written
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Verify file still exists after delay
+          if (!await file.exists()) {
+            throw Exception('Downloaded file was deleted or moved');
+          }
+
+          // Download successful, break retry loop
+          break;
+        } catch (e) {
+          client.close();
+          // Clean up partial file
+          if (await file.exists()) {
+            try {
+              await file.delete();
+            } catch (_) {}
+          }
+          lastError = e is Exception ? e : Exception(e.toString());
+          retryCount++;
+          
+          if (retryCount < maxRetries) {
+            // Exponential backoff: wait 2^retryCount seconds
+            final waitSeconds = 2 * (1 << (retryCount - 1)); // 2, 4, 8 seconds
+            print('DEBUG: Download failed: $e');
+            print('DEBUG: Retrying in $waitSeconds seconds... (Attempt ${retryCount + 1}/$maxRetries)');
+            onProgress(-1.0); // Signal retry to UI
+            await Future.delayed(Duration(seconds: waitSeconds));
+          } else {
+            throw lastError!;
+          }
+        }
+      } catch (e) {
+        if (retryCount >= maxRetries) {
+          // All retries exhausted
+          final errorMsg = e.toString();
+          if (errorMsg.contains('Connection closed') || 
+              errorMsg.contains('Connection') ||
+              errorMsg.contains('timeout')) {
+            throw Exception('Download failed: Network connection issue. Please check your internet connection and try again.\n\nError: $errorMsg');
+          }
+          throw Exception('Download failed after $maxRetries attempts: $errorMsg');
         }
       }
-    } finally {
-      await sink.close();
-      client.close();
     }
 
-    // Verify download
-    if (!await file.exists() || await file.length() == 0) {
-      throw Exception('Downloaded file is missing or empty');
-    }
-
-    print('DEBUG: APK downloaded successfully to: $filePath');
-    print('DEBUG: File size: ${await file.length()} bytes');
-    print('DEBUG: Download URL was: $downloadUrl');
-    
     // Verify the downloaded file is actually an APK
     if (!filePath.toLowerCase().endsWith('.apk')) {
       print('WARNING: Downloaded file does not have .apk extension!');
-    }
-
-    // Small delay to ensure file is fully written
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Verify file exists and has content
-    final fileSize = await file.length();
-    print('DEBUG: APK file size: $fileSize bytes');
-    if (fileSize < 1000000) { // Less than 1MB is suspicious
-      throw Exception('Downloaded APK file is too small (${fileSize} bytes). File may be corrupted.');
     }
 
     // Use native method channel for installation (more reliable than OpenFile)
