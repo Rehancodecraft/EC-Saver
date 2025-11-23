@@ -1,7 +1,7 @@
 name: emergency_cases_saver
 description: EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan
 
-version: 1.2.8+28  # v1.2.8 - Enhanced home screen, PDF with user data, and precautions section
+version: 1.2.9+29  # v1.2.9 - Optimized card sizes with readable text, fixed leaves card label
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
