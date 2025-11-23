@@ -9,7 +9,6 @@ import 'screens/emergency_form_screen.dart';
 import 'screens/records_screen.dart';
 import 'screens/about_screen.dart';
 import 'screens/feedback_screen.dart';
-import 'screens/off_days_screen.dart';
 import 'utils/constants.dart';
 
 Future<void> main() async {
@@ -94,9 +93,6 @@ class MyApp extends StatelessWidget {
             break;
           case '/feedback':
             page = const FeedbackScreen();
-            break;
-          case '/off-days':
-            page = const OffDaysScreen();
             break;
           default:
             page = const SplashScreen();

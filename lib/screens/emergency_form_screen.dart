@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import '../models/emergency.dart';
+import '../models/off_day.dart';
 import '../services/database_service.dart';
 import '../utils/constants.dart';
 
@@ -28,6 +28,9 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   bool _isLateEntry = false;
   bool _isSaving = false;
 
+  // Entry type: 'emergency', 'off-day', 'leave', 'gazetted-day'
+  String _entryType = 'emergency';
+
   // Track if form has any input
   bool _hasInput = false;
 
@@ -44,9 +47,15 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
 
   void _checkFormInput() {
     setState(() {
-      _hasInput = _ecNumberController.text.isNotEmpty ||
-          _emergencyTypeController.text.isNotEmpty ||
-          _notesController.text.isNotEmpty;
+      // For emergency entries, check EC number and type
+      // For off days/leave/gazetted, only check if date is selected
+      if (_entryType == 'emergency') {
+        _hasInput = _ecNumberController.text.isNotEmpty ||
+            _emergencyTypeController.text.isNotEmpty ||
+            _notesController.text.isNotEmpty;
+      } else {
+        _hasInput = _selectedDate != null;
+      }
     });
   }
 
@@ -79,21 +88,47 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
     );
 
     if (picked != null) {
-      // Check if selected date is an off day
-      final isOffDay = await _databaseService.isOffDay(picked);
-      if (isOffDay) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'This date (${picked.day}/${picked.month}/${picked.year}) is marked as an off day. Cannot select this date for entries.',
+      // Check if selected date already has an emergency entry (only for emergency entries)
+      if (_entryType == 'emergency') {
+        final isOffDay = await _databaseService.isOffDay(picked);
+        if (isOffDay) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'This date (${picked.day}/${picked.month}/${picked.year}) is marked as an off day. Cannot add emergency entry on this date.',
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
               ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+            );
+          }
+          return; // Don't set the date if it's an off day
         }
-        return; // Don't set the date if it's an off day
+        
+        // Check if date already has an emergency entry
+        final emergencies = await _databaseService.getAllEmergencies();
+        final hasEmergency = emergencies.any((e) {
+          final eDate = e.emergencyDate;
+          return eDate.year == picked.year &&
+                 eDate.month == picked.month &&
+                 eDate.day == picked.day;
+        });
+        
+        if (hasEmergency) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'This date already has an emergency entry. Cannot add another entry on the same date.',
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
       }
 
       setState(() {
@@ -107,13 +142,24 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   }
 
   Future<void> _saveEmergency() async {
-    if (!_formKey.currentState!.validate()) {
-      print('DEBUG: Form validation failed');
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a date'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
-    // Check if selected date is an off day
-    if (_selectedDate != null) {
+    // Validate emergency entry fields
+    if (_entryType == 'emergency') {
+      if (!_formKey.currentState!.validate()) {
+        print('DEBUG: Form validation failed');
+        return;
+      }
+
+      // Check if selected date already has an entry
       final isOffDay = await _databaseService.isOffDay(_selectedDate!);
       if (isOffDay) {
         if (mounted) {
@@ -129,42 +175,137 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
         }
         return;
       }
+
+      // Check if date already has an emergency entry
+      final emergencies = await _databaseService.getAllEmergencies();
+      final hasEmergency = emergencies.any((e) {
+        final eDate = e.emergencyDate;
+        return eDate.year == _selectedDate!.year &&
+               eDate.month == _selectedDate!.month &&
+               eDate.day == _selectedDate!.day;
+      });
+      
+      if (hasEmergency) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'This date already has an emergency entry. Cannot add another entry on the same date.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+    } else {
+      // For off days, check if date already has an emergency entry
+      final emergencies = await _databaseService.getAllEmergencies();
+      final hasEmergency = emergencies.any((e) {
+        final eDate = e.emergencyDate;
+        return eDate.year == _selectedDate!.year &&
+               eDate.month == _selectedDate!.month &&
+               eDate.day == _selectedDate!.day;
+      });
+      
+      if (hasEmergency) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'This date already has an emergency entry. Cannot mark as off day.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
 
     try {
-      print('DEBUG: Creating emergency object');
-      
-      final emergency = Emergency(
-        ecNumber: _ecNumberController.text.trim(),
-        emergencyDate: _selectedDate!,
-        emergencyType: _emergencyTypeController.text.trim(),
-        location: null,
-        notes: _notesController.text.trim().isEmpty 
-            ? null 
-            : _notesController.text.trim(),
-        isLateEntry: _isLateEntry,
-        createdAt: DateTime.now(),
-        createdBy: null,
-      );
-
-      print('DEBUG: Emergency object created - EC: ${emergency.ecNumber}, Type: ${emergency.emergencyType}');
-      print('DEBUG: Date: ${emergency.emergencyDate}, Late Entry: ${emergency.isLateEntry}');
-
-      final id = await _databaseService.saveEmergency(emergency);
-      
-      print('DEBUG: Emergency saved successfully with ID: $id');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Emergency case saved successfully! (ID: $id)'),
-            backgroundColor: AppColors.secondaryGreen,
-            duration: const Duration(seconds: 2),
-          ),
+      if (_entryType == 'emergency') {
+        // Save as emergency entry
+        print('DEBUG: Creating emergency object');
+        
+        final emergency = Emergency(
+          ecNumber: _ecNumberController.text.trim(),
+          emergencyDate: _selectedDate!,
+          emergencyType: _emergencyTypeController.text.trim(),
+          location: null,
+          notes: _notesController.text.trim().isEmpty 
+              ? null 
+              : _notesController.text.trim(),
+          isLateEntry: _isLateEntry,
+          createdAt: DateTime.now(),
+          createdBy: null,
         );
-        Navigator.pop(context, true); // Return true to indicate success
+
+        print('DEBUG: Emergency object created - EC: ${emergency.ecNumber}, Type: ${emergency.emergencyType}');
+        print('DEBUG: Date: ${emergency.emergencyDate}, Late Entry: ${emergency.isLateEntry}');
+
+        final id = await _databaseService.saveEmergency(emergency);
+        
+        print('DEBUG: Emergency saved successfully with ID: $id');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Emergency case saved successfully! (ID: $id)'),
+              backgroundColor: AppColors.secondaryGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } else {
+        // Save as off day
+        String typeLabel = '';
+        switch (_entryType) {
+          case 'off-day':
+            typeLabel = 'Off-Day';
+            break;
+          case 'leave':
+            typeLabel = 'Leave';
+            break;
+          case 'gazetted-day':
+            typeLabel = 'Gazetted Day';
+            break;
+        }
+
+        final offDay = OffDay(
+          offDate: _selectedDate!,
+          notes: typeLabel + (_notesController.text.trim().isNotEmpty 
+              ? ' - ${_notesController.text.trim()}' 
+              : ''),
+          createdAt: DateTime.now(),
+        );
+
+        // Check if off day already exists for this date
+        final existingOffDay = await _databaseService.getOffDayByDate(_selectedDate!);
+        if (existingOffDay != null) {
+          // Update existing off day
+          await _databaseService.deleteOffDay(existingOffDay.id!);
+        }
+
+        final id = await _databaseService.saveOffDay(offDay);
+        
+        print('DEBUG: Off day saved successfully with ID: $id');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$typeLabel saved successfully!'),
+              backgroundColor: AppColors.secondaryGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       print('DEBUG: Error in _saveEmergency: $e');
@@ -173,7 +314,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save emergency: ${e.toString()}'),
+            content: Text('Failed to save: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -203,24 +344,72 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // EC Number (Remove * from label)
-                TextFormField(
-                  controller: _ecNumberController,
+                // Entry Type Dropdown
+                DropdownButtonFormField<String>(
+                  value: _entryType,
                   decoration: InputDecoration(
-                    labelText: 'EC Number',
-                    prefixIcon: const Icon(Icons.numbers),
-                    hintText: '123456',
+                    labelText: 'Entry Type',
+                    prefixIcon: const Icon(Icons.category),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'emergency',
+                      child: Text('Emergency Entry'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'off-day',
+                      child: Text('Off-Day'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'leave',
+                      child: Text('Leave'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'gazetted-day',
+                      child: Text('Gazetted Day'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _entryType = value!;
+                      // Clear EC number when switching to off day types
+                      if (_entryType != 'emergency') {
+                        _ecNumberController.clear();
+                        _emergencyTypeController.clear();
+                      }
+                      _checkFormInput();
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // EC Number (Disabled for off days)
+                TextFormField(
+                  controller: _ecNumberController,
+                  enabled: _entryType == 'emergency',
+                  decoration: InputDecoration(
+                    labelText: 'EC Number',
+                    prefixIcon: const Icon(Icons.numbers),
+                    hintText: _entryType == 'emergency' ? '123456' : 'Not required for ${_entryType == 'off-day' ? 'Off-Day' : _entryType == 'leave' ? 'Leave' : 'Gazetted Day'}',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: _entryType != 'emergency',
+                    fillColor: _entryType != 'emergency' ? Colors.grey[200] : null,
                   ),
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                   ],
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter EC number';
+                    if (_entryType == 'emergency') {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter EC number';
+                      }
                     }
                     return null;
                   },
@@ -287,31 +476,36 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
 
                 const SizedBox(height: 16),
 
-                // Emergency Type (Remove * from label)
-                TextFormField(
-                  controller: _emergencyTypeController,
-                  decoration: InputDecoration(
-                    labelText: 'Emergency Type',
-                    prefixIcon: const Icon(Icons.emergency),
-                    hintText: 'e.g., Road Accident',
-                    helperText: 'Max 2 words, 20 characters',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                // Emergency Type (Only for emergency entries)
+                if (_entryType == 'emergency')
+                  TextFormField(
+                    controller: _emergencyTypeController,
+                    decoration: InputDecoration(
+                      labelText: 'Emergency Type',
+                      prefixIcon: const Icon(Icons.emergency),
+                      hintText: 'e.g., Road Accident',
+                      helperText: 'Max 2 words, 20 characters',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
+                    textCapitalization: TextCapitalization.words,
+                    maxLength: 20,
+                    validator: (value) {
+                      if (_entryType == 'emergency') {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter emergency type';
+                        }
+                        final words = value.trim().split(' ');
+                        if (words.length > 2) {
+                          return 'Maximum 2 words allowed';
+                        }
+                      }
+                      return null;
+                    },
                   ),
-                  textCapitalization: TextCapitalization.words,
-                  maxLength: 20,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter emergency type';
-                    }
-                    final words = value.trim().split(' ');
-                    if (words.length > 2) {
-                      return 'Maximum 2 words allowed';
-                    }
-                    return null;
-                  },
-                ),
+
+                if (_entryType == 'emergency') const SizedBox(height: 16),
 
                 const SizedBox(height: 16),
 
@@ -366,7 +560,9 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                _hasInput ? 'SAVE EMERGENCY' : 'FILL FORM TO SAVE',
+                                _entryType == 'emergency'
+                                    ? (_hasInput ? 'SAVE EMERGENCY' : 'FILL FORM TO SAVE')
+                                    : (_hasInput ? 'SAVE ${_entryType == 'off-day' ? 'OFF-DAY' : _entryType == 'leave' ? 'LEAVE' : 'GAZETTED DAY'}' : 'SELECT DATE TO SAVE'),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
