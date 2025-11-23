@@ -88,7 +88,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
     );
 
     if (picked != null) {
-      // Check if selected date already has an emergency entry (only for emergency entries)
+      // Check if selected date is an off day (only for emergency entries)
       if (_entryType == 'emergency') {
         final isOffDay = await _databaseService.isOffDay(picked);
         if (isOffDay) {
@@ -105,30 +105,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
           }
           return; // Don't set the date if it's an off day
         }
-        
-        // Check if date already has an emergency entry
-        final emergencies = await _databaseService.getAllEmergencies();
-        final hasEmergency = emergencies.any((e) {
-          final eDate = e.emergencyDate;
-          return eDate.year == picked.year &&
-                 eDate.month == picked.month &&
-                 eDate.day == picked.day;
-        });
-        
-        if (hasEmergency) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'This date already has an emergency entry. Cannot add another entry on the same date.',
-                ),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-          return;
-        }
+        // Allow multiple emergency entries on the same date
       } else {
         // For off days/leave/gazetted: Check if date already has an emergency entry
         final emergencies = await _databaseService.getAllEmergencies();
@@ -184,7 +161,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
         return;
       }
 
-      // Check if selected date already has an entry
+      // Check if selected date is an off day (cannot add emergency on off days)
       final isOffDay = await _databaseService.isOffDay(_selectedDate!);
       if (isOffDay) {
         if (mounted) {
@@ -200,30 +177,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
         }
         return;
       }
-
-      // Check if date already has an emergency entry
-      final emergencies = await _databaseService.getAllEmergencies();
-      final hasEmergency = emergencies.any((e) {
-        final eDate = e.emergencyDate;
-        return eDate.year == _selectedDate!.year &&
-               eDate.month == _selectedDate!.month &&
-               eDate.day == _selectedDate!.day;
-      });
-      
-      if (hasEmergency) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'This date already has an emergency entry. Cannot add another entry on the same date.',
-              ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-        return;
-      }
+      // Allow multiple emergency entries on the same date
     } else {
       // For off days, check if date already has an emergency entry
       final emergencies = await _databaseService.getAllEmergencies();
