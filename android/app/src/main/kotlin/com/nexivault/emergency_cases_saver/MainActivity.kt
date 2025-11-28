@@ -2,6 +2,7 @@ package com.nexivault.emergency_cases_saver
 
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
@@ -140,13 +141,60 @@ class MainActivity: FlutterActivity() {
             throw Exception("No app found to handle APK installation. Please enable 'Install unknown apps' permission.")
         }
 
+        // Check if app is already installed and compare version codes
+        try {
+            val packageInfo = packageManager.getPackageInfo(applicationContext.packageName, PackageManager.GET_META_DATA)
+            val installedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
+            
+            // Try to get version code from the new APK
+            val newApkInfo = packageManager.getPackageArchiveInfo(filePath, PackageManager.GET_META_DATA)
+            if (newApkInfo != null) {
+                val newVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    newApkInfo.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    newApkInfo.versionCode.toLong()
+                }
+                
+                // Check if version code is lower or equal (would cause installation failure)
+                if (newVersionCode <= installedVersionCode) {
+                    throw Exception("Version conflict: New APK version code ($newVersionCode) is not higher than installed version ($installedVersionCode).\n\nThis usually means the build number in the new APK is the same or lower than the current installation.\n\nPlease ensure the new version has a higher build number (the number after the + in version).")
+                }
+                
+                // Note: We can't easily check signature compatibility here without complex crypto operations
+                // Android will reject the installation if signatures don't match and show an error
+                // The error message will guide the user
+            }
+        } catch (e: Exception) {
+            // If it's our custom exception, re-throw it
+            if (e.message?.contains("Version conflict") == true) {
+                throw e
+            }
+            // Otherwise, continue with installation attempt
+            // The system installer will show the actual error if installation fails
+        }
+
         // Start installation - this will automatically open the installer dialog
         // User does NOT need to manually find or click the file
         try {
             startActivity(intent)
             // Installation dialog should now appear automatically
+            // Note: If installation fails with "App not installed", it's usually due to:
+            // 1. Signature mismatch (app signed with different key) - Solution: Uninstall old app first
+            // 2. Version code conflict (new version not higher) - Already checked above
+            // 3. Corrupted APK - Already verified above
+            // The system installer will show the specific error to the user
+        } catch (e: SecurityException) {
+            throw Exception("Security error: ${e.message}\n\nPlease grant 'Install unknown apps' permission for EC Saver:\n1. Go to Settings > Apps > EC Saver\n2. Enable 'Install unknown apps' or 'Install apps from this source'")
+        } catch (e: android.content.ActivityNotFoundException) {
+            throw Exception("No app found to install APK. Please enable 'Install unknown apps' permission in your device settings.")
         } catch (e: Exception) {
-            throw Exception("Failed to start installation: ${e.message}")
+            throw Exception("Failed to start installation: ${e.message}\n\nIf you see 'App not installed' error, it may be due to:\n1. Signature mismatch - Uninstall the current app first\n2. Corrupted APK - Try downloading again\n3. Insufficient permissions - Grant installation permission")
         }
     }
 
