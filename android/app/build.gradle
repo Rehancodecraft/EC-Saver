@@ -55,9 +55,55 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            // Use environment variables for CI/CD (GitHub Actions)
+            // For local builds, create android/key.properties file
+            def keystorePropertiesFile = rootProject.file("android/key.properties")
+            def keystoreProperties = new Properties()
+            
+            if (keystorePropertiesFile.exists()) {
+                keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+            } else {
+                // Try environment variables (for CI/CD)
+                keystoreProperties['storeFile'] = System.getenv("KEYSTORE_FILE") ?: ""
+                keystoreProperties['storePassword'] = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keystoreProperties['keyAlias'] = System.getenv("KEY_ALIAS") ?: ""
+                keystoreProperties['keyPassword'] = System.getenv("KEY_PASSWORD") ?: ""
+            }
+            
+            // If keystore is configured, use it; otherwise fall back to debug
+            if (keystoreProperties['storeFile'] && 
+                keystoreProperties['storePassword'] && 
+                keystoreProperties['keyAlias'] && 
+                keystoreProperties['keyPassword']) {
+                // Handle both absolute paths and relative paths
+                def storeFilePath = keystoreProperties['storeFile']
+                if (!new File(storeFilePath).isAbsolute()) {
+                    // Relative path - assume it's in android/app/
+                    storeFilePath = "android/app/${storeFilePath}"
+                }
+                storeFile file(storeFilePath)
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            } else {
+                // Fallback to debug signing if no release keystore configured
+                // This allows builds to work without keystore setup
+                // Note: Debug signing will show "harmful" warning - generate keystore to fix
+                storeFile signingConfigs.debug.storeFile
+                storePassword signingConfigs.debug.storePassword
+                keyAlias signingConfigs.debug.keyAlias
+                keyPassword signingConfigs.debug.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
         }
     }
 }

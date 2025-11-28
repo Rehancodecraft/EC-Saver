@@ -100,10 +100,12 @@ class MainActivity: FlutterActivity() {
             Uri.fromFile(file)
         }
 
-        // Create installation intent with proper flags
+        // Create installation intent with proper flags to ensure it opens automatically
         val intent = Intent(Intent.ACTION_VIEW).apply {
+            // These flags ensure the installer opens in foreground and is visible
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
             flags = flags or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = flags or Intent.FLAG_ACTIVITY_SINGLE_TOP
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             
@@ -115,7 +117,9 @@ class MainActivity: FlutterActivity() {
                 val packageInstallers = listOf(
                     "com.android.packageinstaller",
                     "com.google.android.packageinstaller",
-                    "com.samsung.android.packageinstaller"
+                    "com.samsung.android.packageinstaller",
+                    "com.miui.packageinstaller",
+                    "com.huawei.packageinstaller"
                 )
                 
                 for (packageName in packageInstallers) {
@@ -136,9 +140,11 @@ class MainActivity: FlutterActivity() {
             throw Exception("No app found to handle APK installation. Please enable 'Install unknown apps' permission.")
         }
 
-        // Start installation
+        // Start installation - this will automatically open the installer dialog
+        // User does NOT need to manually find or click the file
         try {
             startActivity(intent)
+            // Installation dialog should now appear automatically
         } catch (e: Exception) {
             throw Exception("Failed to start installation: ${e.message}")
         }

@@ -382,6 +382,8 @@ class UpdateService {
     try {
       const platform = MethodChannel('apk_installer');
       print('DEBUG: Calling native install method with path: $filePath');
+      
+      // Trigger installation - this will automatically open the installer
       final result = await platform.invokeMethod('installApk', {'filePath': filePath});
       print('DEBUG: Native install method result: $result');
       
@@ -390,6 +392,10 @@ class UpdateService {
       }
       
       print('DEBUG: Installer opened successfully via native method');
+      print('DEBUG: Installation dialog should appear automatically - user does not need to find the file');
+      
+      // Small delay to ensure installer intent is processed
+      await Future.delayed(const Duration(milliseconds: 300));
     } catch (e) {
       print('DEBUG: Native install method failed: $e');
       print('DEBUG: Error details: ${e.toString()}');

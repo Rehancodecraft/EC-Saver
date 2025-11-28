@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 
 import '../services/update_service.dart';
 
@@ -56,7 +55,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
       );
 
       setState(() {
-        _status = 'Download complete. Opening installer...';
+        _status = 'Download complete. Starting installation...';
+      });
+
+      // Small delay to ensure file is fully written and accessible
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      setState(() {
+        _status = 'Opening installer automatically...';
       });
 
       // CRITICAL: Set dismissal AFTER successful download
@@ -71,18 +77,18 @@ class _UpdateDialogState extends State<UpdateDialog> {
       print('DEBUG: UpdateDialog - Set dismissed version: $versionKey');
       print('DEBUG: UpdateDialog - Note: Will be cleared on next app start if version changes');
 
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted) Navigator.of(context).pop();
-
-      // Exit app to allow clean installation
-      // After user installs and reopens app, splash screen will detect version change
-      // and clear dismissed_update_version if needed
-      try {
-        SystemNavigator.pop();
-      } catch (_) {}
-      try {
-        exit(0);
-      } catch (_) {}
+      // Wait a bit longer to ensure installer opens before closing dialog
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // Close dialog but keep app running so installer can show
+      // The installer dialog should now be visible automatically
+      // User does NOT need to manually find or click the downloaded file
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Note: App stays open so installer dialog remains visible
+      // User can complete installation and then close app if needed
     } catch (e) {
       print('DEBUG: UpdateDialog - Download error: $e');
       setState(() {
