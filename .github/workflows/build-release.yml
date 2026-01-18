@@ -221,14 +221,28 @@ jobs:
           # Verify keystore can be read (without exposing passwords)
           if command -v keytool &> /dev/null; then
             echo "🔍 Verifying keystore integrity..."
-            if keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" > /dev/null 2>&1; then
+            if keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" -keypass "${{ secrets.KEY_PASSWORD }}" > /dev/null 2>&1; then
               echo "✅ Keystore verified successfully"
               # Show certificate fingerprint (safe to expose)
               echo "📱 Certificate fingerprint:"
-              keytool -list -v -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" | grep -A 1 "Certificate fingerprints" || true
+              keytool -list -v -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" -keypass "${{ secrets.KEY_PASSWORD }}" | grep -A 1 "Certificate fingerprints" || true
             else
               echo "❌ ERROR: Keystore verification failed!"
-              echo "Check if KEYSTORE_PASSWORD and KEY_ALIAS are correct"
+              echo "Possible causes:"
+              echo "  1. KEYSTORE_PASSWORD is incorrect"
+              echo "  2. KEY_PASSWORD is incorrect"
+              echo "  3. KEY_ALIAS is incorrect"
+              echo "  4. Keystore file is corrupted"
+              echo ""
+              echo "Attempting basic keystore check without alias..."
+              if keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" > /dev/null 2>&1; then
+                echo "✅ Keystore file and KEYSTORE_PASSWORD are correct"
+                echo "❌ KEY_ALIAS or KEY_PASSWORD is incorrect"
+                echo "Available aliases:"
+                keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" | grep "Alias" || true
+              else
+                echo "❌ KEYSTORE_PASSWORD is incorrect or keystore is corrupted"
+              fi
               exit 1
             fi
           else
