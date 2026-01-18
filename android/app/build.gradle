@@ -1,3 +1,8 @@
+// Configure Flutter source directory BEFORE applying plugin
+flutter {
+    source '../..'
+}
+
 plugins {
     id "com.android.application"
     id "kotlin-android"
@@ -20,10 +25,6 @@ if (flutterVersionCode == null) {
 def flutterVersionName = localProperties.getProperty('flutter.versionName')
 if (flutterVersionName == null) {
     flutterVersionName = '1.0'
-}
-
-flutter {
-    source '../..'
 }
 
 android {
