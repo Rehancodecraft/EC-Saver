@@ -212,7 +212,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     // On mobile, check registration status
     bool isRegistered = false;
     try {
-      await DatabaseService().database;
       isRegistered = await DatabaseService().isUserRegistered();
     } catch (e) {
       debugPrint('Database initialization error: $e');

@@ -1,30 +1,106 @@
-/// Stub implementation for non-web platforms
-class WebStorageService {
-  static Future<void> saveUserProfile(Map<String, dynamic> profile) async {
-    throw UnsupportedError('Web storage not available on this platform');
+import '../models/user_profile.dart';
+import '../models/emergency.dart';
+import '../models/off_day.dart';
+import 'database_service.dart';
+
+class WebStorageService implements DatabaseService {
+  @override
+  Future<void> close() {
+    throw UnimplementedError();
   }
-  
-  static Future<Map<String, dynamic>?> getUserProfile() async {
-    throw UnsupportedError('Web storage not available on this platform');
+
+  @override
+  Future<void> deleteEmergency(int id) {
+    throw UnimplementedError();
   }
-  
-  static Future<void> saveEmergency(Map<String, dynamic> emergency) async {
-    throw UnsupportedError('Web storage not available on this platform');
+
+  @override
+  Future<void> deleteEmergenciesByMonth(String monthYear) {
+    throw UnimplementedError();
   }
-  
-  static Future<List<Map<String, dynamic>>> getEmergencies() async {
-    throw UnsupportedError('Web storage not available on this platform');
+
+  @override
+  Future<void> deleteMonthRecords(String monthYear) {
+    throw UnimplementedError();
   }
-  
-  static Future<List<Map<String, dynamic>>> searchEmergencies(String query) async {
-    throw UnsupportedError('Web storage not available on this platform');
+
+  @override
+  Future<void> deleteOffDay(int id) {
+    throw UnimplementedError();
   }
-  
-  static Future<void> deleteMonthEmergencies(String monthYear) async {
-    throw UnsupportedError('Web storage not available on this platform');
+
+  @override
+  Future<void> deleteOffDayByDate(DateTime date) {
+    throw UnimplementedError();
   }
-  
-  static Future<void> clearAll() async {
-    throw UnsupportedError('Web storage not available on this platform');
+
+  @override
+  Future<List<Emergency>> filterEmergenciesByType(String type) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Emergency>> getAllEmergencies() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Emergency>> getEmergencies() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<OffDay?> getOffDayByDate(DateTime date) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<OffDay>> getOffDays() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<OffDay>> getOffDaysByMonth(String monthYear) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<UserProfile?> getUserProfile() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> insertFeedback(String name, String message) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> isOffDay(DateTime date) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> isUserRegistered() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> saveEmergency(Emergency emergency) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> saveOffDay(OffDay offDay) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> saveUserProfile(UserProfile profile) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Emergency>> searchEmergencies(String query) {
+    throw UnimplementedError();
   }
 }
