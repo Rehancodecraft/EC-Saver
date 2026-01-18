@@ -1,6 +1,7 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
 }
 
 // Configure Flutter source directory
@@ -100,5 +101,3 @@ dependencies {
     // Use an explicit Kotlin stdlib version matching the Kotlin Gradle plugin in android/build.gradle
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
 }
-
-apply plugin: 'dev.flutter.flutter-gradle-plugin'
