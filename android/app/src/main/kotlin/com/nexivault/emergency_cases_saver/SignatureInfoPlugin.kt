@@ -62,7 +62,7 @@ class SignatureInfoPlugin {
                     ).signatures
                 }
                 
-                if (signatures.isNotEmpty()) {
+                if (!signatures.isNullOrEmpty()) {
                     val signature = signatures[0]
                     val cert = signature.toByteArray()
                     
