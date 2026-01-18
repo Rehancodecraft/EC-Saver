@@ -58,7 +58,7 @@ android {
     signingConfigs {
         release {
             // Load signing config from key.properties file (created by CI/CD or manually)
-            def keystorePropertiesFile = rootProject.file("android/key.properties")
+            def keystorePropertiesFile = rootProject.file("key.properties")
             def keystoreProperties = new Properties()
             
             if (keystorePropertiesFile.exists()) {
@@ -77,7 +77,7 @@ android {
                 println "✅ Release signing configured with keystore: ${keystorePath}"
             } else {
                 // Error: key.properties is required for release builds
-                throw new GradleException("ERROR: android/key.properties not found! Cannot sign release APK.")
+                throw new GradleException("ERROR: key.properties not found in android/ directory! Cannot sign release APK.")
             }
         }
     }
