@@ -218,38 +218,18 @@ jobs:
           
           echo "✅ key.properties created"
           
-          # Verify keystore can be read (without exposing passwords)
-          if command -v keytool &> /dev/null; then
-            echo "🔍 Verifying keystore integrity..."
-            if keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" -keypass "${{ secrets.KEY_PASSWORD }}" > /dev/null 2>&1; then
-              echo "✅ Keystore verified successfully"
-              # Show certificate fingerprint (safe to expose)
-              echo "📱 Certificate fingerprint:"
-              keytool -list -v -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" -keypass "${{ secrets.KEY_PASSWORD }}" | grep -A 1 "Certificate fingerprints" || true
-            else
-              echo "❌ ERROR: Keystore verification failed!"
-              echo "Possible causes:"
-              echo "  1. KEYSTORE_PASSWORD is incorrect"
-              echo "  2. KEY_PASSWORD is incorrect"
-              echo "  3. KEY_ALIAS is incorrect"
-              echo "  4. Keystore file is corrupted"
-              echo ""
-              echo "Attempting basic keystore check without alias..."
-              if keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" > /dev/null 2>&1; then
-                echo "✅ Keystore file and KEYSTORE_PASSWORD are correct"
-                echo "❌ KEY_ALIAS or KEY_PASSWORD is incorrect"
-                echo "Available aliases:"
-                keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" | grep "Alias" || true
-              else
-                echo "❌ KEYSTORE_PASSWORD is incorrect or keystore is corrupted"
-              fi
-              exit 1
-            fi
-          else
-            echo "⚠️  keytool not available, skipping verification"
-          fi
+          # Show keystore file info for debugging
+          echo "📊 Keystore file info:"
+          ls -lh android/app/upload-keystore.jks
+          file android/app/upload-keystore.jks || echo "file command not available"
+          
+          # Calculate checksums for debugging
+          echo "📊 Keystore checksums:"
+          md5sum android/app/upload-keystore.jks || echo "md5sum not available"
+          sha256sum android/app/upload-keystore.jks || echo "sha256sum not available"
           
           echo "✅ Release signing configured successfully"
+          echo "⚠️  Keystore will be verified during Gradle build"
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
