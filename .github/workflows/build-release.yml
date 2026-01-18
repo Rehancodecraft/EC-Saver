@@ -218,6 +218,17 @@ EOF
           
           echo "✅ key.properties created"
           
+          # Show contents for debugging (without exposing passwords)
+          echo "📄 key.properties content:"
+          cat android/key.properties
+          
+          # Verify paths
+          echo "📊 File verification:"
+          echo "  key.properties exists: $([ -f android/key.properties ] && echo 'YES' || echo 'NO')"
+          echo "  keystore exists: $([ -f android/app/upload-keystore.jks ] && echo 'YES' || echo 'NO')"
+          ls -la android/ | grep -E "key.properties|app" || true
+          ls -la android/app/ | grep "jks" || true
+          
           # Show keystore file info for debugging
           echo "📊 Keystore file info:"
           ls -lh android/app/upload-keystore.jks
