@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
 import '../widgets/drawer_menu.dart';
+import '../utils/signature_info_helper.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -264,6 +265,19 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                                     _fetchLatestVersion();
                                   },
                             tooltip: 'Refresh version',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.fingerprint,
+                              size: 16,
+                              color: AppColors.primaryRed,
+                            ),
+                            onPressed: () {
+                              SignatureInfoHelper.showSignatureDialog(context);
+                            },
+                            tooltip: 'View signature info (for debugging)',
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),

@@ -174,6 +174,74 @@ jobs:
           yes | flutter doctor --android-licenses || echo "License acceptance completed or skipped"
         continue-on-error: true
       
+      - name: Setup Release Signing
+        run: |
+          echo "🔐 Setting up release signing with keystore..."
+          
+          # Check if keystore secret is available
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "❌ ERROR: KEYSTORE_BASE64 secret not found!"
+            echo "⚠️  APK will be signed with debug key (NOT RECOMMENDED)"
+            echo "⚠️  This will cause 'app not installed' errors when upgrading!"
+            echo ""
+            echo "📋 To fix this, add the following secrets to GitHub:"
+            echo "   1. KEYSTORE_BASE64 - Base64 encoded keystore file"
+            echo "   2. KEYSTORE_PASSWORD - Keystore password"
+            echo "   3. KEY_ALIAS - Key alias"
+            echo "   4. KEY_PASSWORD - Key password"
+            echo ""
+            echo "See GITHUB_SECRETS_SETUP.md for detailed instructions"
+            exit 1
+          fi
+          
+          # Create keystore directory
+          mkdir -p android/app
+          
+          # Decode and save keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+          
+          # Verify keystore file
+          if [ ! -f android/app/upload-keystore.jks ]; then
+            echo "❌ ERROR: Failed to create keystore file!"
+            exit 1
+          fi
+          
+          echo "✅ Keystore file created: $(ls -lh android/app/upload-keystore.jks | awk '{print $5}')"
+          
+          # Create key.properties for signing
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=app/upload-keystore.jks
+          EOF
+          
+          echo "✅ key.properties created"
+          
+          # Verify keystore can be read (without exposing passwords)
+          if command -v keytool &> /dev/null; then
+            echo "🔍 Verifying keystore integrity..."
+            if keytool -list -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" > /dev/null 2>&1; then
+              echo "✅ Keystore verified successfully"
+              # Show certificate fingerprint (safe to expose)
+              echo "📱 Certificate fingerprint:"
+              keytool -list -v -keystore android/app/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" | grep -A 1 "Certificate fingerprints" || true
+            else
+              echo "❌ ERROR: Keystore verification failed!"
+              echo "Check if KEYSTORE_PASSWORD and KEY_ALIAS are correct"
+              exit 1
+            fi
+          else
+            echo "⚠️  keytool not available, skipping verification"
+          fi
+          
+          echo "✅ Release signing configured successfully"
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      
       - name: Configure Gradle memory
         run: |
           echo "⚙️  Configuring Gradle memory settings..."
