@@ -1,12 +1,6 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin"
-}
-
-// Configure Flutter source directory
-flutter {
-    source '../..'
 }
 
 def localProperties = new Properties()
@@ -46,14 +40,13 @@ android {
 
     defaultConfig {
         applicationId "com.nexivault.emergency_cases_saver"
-        minSdkVersion 24  // Required by url_launcher_android
+        minSdkVersion 24
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
     }
 
-    // ✅ VERIFIED: Auto-naming APK with version
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
             outputFileName = "ec-saver-v${flutterVersionName}-${variant.buildType.name}.apk"
@@ -62,7 +55,6 @@ android {
 
     signingConfigs {
         release {
-            // Load signing config from key.properties file (created by CI/CD or manually)
             def keystorePropertiesFile = rootProject.file("key.properties")
             def keystoreProperties = new Properties()
             
@@ -71,8 +63,6 @@ android {
                     keystoreProperties.load(reader)
                 }
                 
-                // Use the properties from key.properties
-                // The storeFile path is relative to project root
                 def keystorePath = keystoreProperties['storeFile']
                 storeFile rootProject.file(keystorePath)
                 storePassword keystoreProperties['storePassword']
@@ -81,7 +71,6 @@ android {
                 
                 println "✅ Release signing configured with keystore: ${keystorePath}"
             } else {
-                // Error: key.properties is required for release builds
                 throw new GradleException("ERROR: key.properties not found in android/ directory! Cannot sign release APK.")
             }
         }
@@ -89,7 +78,6 @@ android {
 
     buildTypes {
         release {
-            // Always use release signing config
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
@@ -98,6 +86,5 @@ android {
 }
 
 dependencies {
-    // Use an explicit Kotlin stdlib version matching the Kotlin Gradle plugin in android/build.gradle
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
 }
