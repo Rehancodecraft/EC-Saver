@@ -1,7 +1,7 @@
 name: emergency_cases_saver
 description: EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan
 
-version: 1.3.5+35  # v1.3.5 - Fixed keystore path resolution for proper APK signing
+version: 1.3.6+36
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
