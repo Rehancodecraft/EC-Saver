@@ -36,6 +36,7 @@ dependencies:
   permission_handler: ^11.4.0
   open_file: ^3.3.2
   shared_preferences: ^2.0.15
+  app_links: ^6.3.2  # Explicit version to fix Gradle compatibility
 
 dev_dependencies:
   flutter_test:

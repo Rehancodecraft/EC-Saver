@@ -37,14 +37,7 @@ jobs:
       - name: Setup Android Signing
         run: |
           echo "🔐 Setting up Android signing..."
-          
-          # Verify secrets are available
-          echo "📋 Checking secrets availability..."
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "❌ KEYSTORE_BASE64 is empty!"
-            exit 1
-          fi
-          echo "✅ KEYSTORE_BASE64 is set (length: ${#KEYSTORE_BASE64})"
+          echo "📋 Decoding keystore from GitHub secret..."
           
           # Create keystore
           mkdir -p android/app
