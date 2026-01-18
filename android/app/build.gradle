@@ -1,12 +1,12 @@
-// Configure Flutter source directory BEFORE applying plugin
-flutter {
-    source '../..'
-}
-
 plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
+}
+
+// Configure Flutter source directory
+flutter {
+    source '../..'
 }
 
 def localProperties = new Properties()
