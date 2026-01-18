@@ -41,7 +41,7 @@ android {
 
     defaultConfig {
         applicationId "com.nexivault.emergency_cases_saver"
-        minSdkVersion flutter.minSdkVersion  // ✅ VERIFIED: Fixed value
+        minSdkVersion 24  // Required by url_launcher_android
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
