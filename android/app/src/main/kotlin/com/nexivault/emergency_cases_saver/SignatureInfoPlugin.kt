@@ -40,10 +40,19 @@ class SignatureInfoPlugin {
                         PackageManager.GET_SIGNING_CERTIFICATES
                     ).signingInfo
                     
-                    if (signingInfo.hasMultipleSigners()) {
-                        signingInfo.apkContentsSigners
+                    if (signingInfo != null) {
+                        if (signingInfo.hasMultipleSigners()) {
+                            signingInfo.apkContentsSigners
+                        } else {
+                            signingInfo.signingCertificateHistory
+                        }
                     } else {
-                        signingInfo.signingCertificateHistory
+                        // Fallback to deprecated method if signingInfo is null
+                        @Suppress("DEPRECATION")
+                        packageManager.getPackageInfo(
+                            packageName,
+                            PackageManager.GET_SIGNATURES
+                        ).signatures
                     }
                 } else {
                     @Suppress("DEPRECATION")
