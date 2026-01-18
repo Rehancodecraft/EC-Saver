@@ -22,6 +22,18 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
+    
+    // Fix for plugins that don't specify compileSdk (like app_links)
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (!project.android.hasProperty('compileSdkVersion') || project.android.compileSdkVersion == null) {
+                    compileSdkVersion 36  // Match main app's compileSdk
+                    println "⚠️  Fixed compileSdk for ${project.name}"
+                }
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {
