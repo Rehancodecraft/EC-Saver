@@ -38,26 +38,117 @@ jobs:
         run: |
           echo "🔐 Setting up Android signing..."
           
+          # Verify secrets are available
+          echo "📋 Checking secrets availability..."
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "❌ KEYSTORE_BASE64 is empty!"
+            exit 1
+          fi
+          echo "✅ KEYSTORE_BASE64 is set (length: ${#KEYSTORE_BASE64})"
+          
           # Create keystore
           mkdir -p android/app
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
           
+          # Verify keystore was created
+          if [ ! -f android/app/upload-keystore.jks ]; then
+            echo "❌ Failed to create keystore!"
+            exit 1
+          fi
+          
+          KEYSTORE_SIZE=$(stat -f%z android/app/upload-keystore.jks 2>/dev/null || stat -c%s android/app/upload-keystore.jks 2>/dev/null)
+          echo "✅ Keystore created: $KEYSTORE_SIZE bytes"
+          ls -lh android/app/upload-keystore.jks
+          
           # Create key.properties
-          cat > android/key.properties << EOF
+          cat > android/key.properties << 'EOF'
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
           storeFile=android/app/upload-keystore.jks
           EOF
           
-          echo "✅ Signing configured"
-          ls -lh android/app/upload-keystore.jks
-          ls -l android/key.properties
+          echo "✅ key.properties created"
+          echo "📄 key.properties content:"
+          cat android/key.properties
+          
+          # Verify all files exist
+          echo ""
+          echo "📊 File verification:"
+          echo "  Working directory: $(pwd)"
+          echo "  android/ contents:"
+          ls -la android/ | head -20
+          echo ""
+          echo "  android/app/ contents:"
+          ls -la android/app/ | grep -E "jks|build\.gradle" || true
+          
+          # Test keystore file
+          echo ""
+          echo "📊 Keystore verification:"
+          file android/app/upload-keystore.jks || echo "file command not available"
+          md5sum android/app/upload-keystore.jks || echo "md5sum not available"
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
       
-      - name: Build APK
+      - name: Verify Build Configuration
         run: |
-          echo "🏗️ Building APK..."
-          flutter build apk --release
+          echo "🔍 Verifying build.gradle configuration..."
+          echo ""
+          echo "📄 android/build.gradle:"
+          cat android/build.gradle
+          echo ""
+          echo "📄 android/app/build.gradle (signingConfigs section):"
+          grep -A 30 "signingConfigs" android/app/build.gradle || echo "No signingConfigs found"
+          echo ""
+          echo "📄 android/gradle.properties:"
+          cat android/gradle.properties || echo "No gradle.properties"
+      
+      - name: Clean Build
+        run: |
+          echo "🧹 Cleaning previous builds..."
+          flutter clean
+          rm -rf build/
+          rm -rf android/.gradle
+          rm -rf android/app/build
+          echo "✅ Clean completed"
+      
+      - name: Build APK with Verbose Logging
+        run: |
+          echo "🏗️ Building APK with verbose logging..."
+          echo "Flutter version:"
+          flutter --version
+          echo ""
+          echo "Java version:"
+          java -version
+          echo ""
+          echo "Starting build..."
+          
+          # Build with maximum verbosity
+          flutter build apk --release -v --verbose 2>&1 | tee build.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ BUILD FAILED with exit code: $BUILD_EXIT_CODE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "📋 LAST 150 LINES OF BUILD LOG:"
+            tail -150 build.log
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔍 ERRORS AND FAILURES:"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            grep -iE "error|fail|exception" build.log | tail -50 || echo "No error keywords found"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔍 GRADLE SPECIFIC ERRORS:"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            grep -iE "gradle|assembleRelease|task.*failed" build.log | tail -30 || echo "No Gradle errors found"
+            exit 1
+          fi
+          
+          echo "✅ Build completed successfully"
           ls -lh build/app/outputs/flutter-apk/
       
       - name: Get version
