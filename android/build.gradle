@@ -19,9 +19,6 @@ allprojects {
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(':app')
     
     // Fix for plugins that don't specify compileSdk (like app_links)
     afterEvaluate { project ->
