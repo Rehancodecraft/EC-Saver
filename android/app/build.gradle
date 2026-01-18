@@ -58,7 +58,7 @@ android {
     signingConfigs {
         release {
             // Load signing config from key.properties file (created by CI/CD or manually)
-            def keystorePropertiesFile = rootProject.file("key.properties")
+            def keystorePropertiesFile = rootProject.file("android/key.properties")
             def keystoreProperties = new Properties()
             
             if (keystorePropertiesFile.exists()) {
@@ -67,14 +67,17 @@ android {
                 }
                 
                 // Use the properties from key.properties
-                storeFile file(keystoreProperties['storeFile'])
+                // The storeFile path is relative to project root
+                def keystorePath = keystoreProperties['storeFile']
+                storeFile rootProject.file(keystorePath)
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
+                
+                println "✅ Release signing configured with keystore: ${keystorePath}"
             } else {
-                // Fallback: show error message (will use debug signing)
-                println "WARNING: key.properties not found! APK will be signed with debug key."
-                println "For production builds, create android/key.properties file"
+                // Error: key.properties is required for release builds
+                throw new GradleException("ERROR: android/key.properties not found! Cannot sign release APK.")
             }
         }
     }
