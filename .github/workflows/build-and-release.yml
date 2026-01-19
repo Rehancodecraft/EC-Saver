@@ -26,7 +26,11 @@ jobs:
           command: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release --verbose
+        uses: nick-invision/retry@v2
+        with:
+          max_attempts: 3
+          retry_on: error
+          command: flutter build apk --release --verbose
 
       - name: Create Release
         id: create_release
