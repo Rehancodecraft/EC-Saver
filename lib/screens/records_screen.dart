@@ -24,9 +24,9 @@ class _RecordsScreenState extends State<RecordsScreen> {
   DateTime? _selectedDate;
   final TextEditingController _searchController = TextEditingController();
 
-  List<String> _availableMonths = [];
+  final List<String> _availableMonths = [];
   bool _isSelectionMode = false;
-  Set<String> _selectedMonths = {};
+  final Set<String> _selectedMonths = {};
   List<String> _allMonths = [];
 
   final DatabaseService _databaseService = DatabaseService(); // Initialize here
@@ -1171,7 +1171,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),

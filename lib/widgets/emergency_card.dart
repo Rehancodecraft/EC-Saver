@@ -8,11 +8,11 @@ class EmergencyCard extends StatefulWidget {
   final int index;
 
   const EmergencyCard({
-    Key? key,
+    super.key,
     required this.emergency,
     this.onDelete,
     this.index = 0,
-  }) : super(key: key);
+  });
 
   @override
   State<EmergencyCard> createState() => _EmergencyCardState();

@@ -9,9 +9,9 @@ class EmergencyFormScreen extends StatefulWidget {
   final String? preSelectedType;
 
   const EmergencyFormScreen({
-    Key? key,
+    super.key,
     this.preSelectedType,
-  }) : super(key: key);
+  });
 
   @override
   State<EmergencyFormScreen> createState() => _EmergencyFormScreenState();
@@ -197,12 +197,12 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
       if (hasEmergency) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text(
                 'This date already has an emergency entry. Cannot mark as off day.',
               ),
               backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 4),
+              duration: Duration(seconds: 4),
             ),
           );
         }
@@ -331,7 +331,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
               children: [
                 // Entry Type Dropdown
                 DropdownButtonFormField<String>(
-                  value: _entryType,
+                  initialValue: _entryType,
                   decoration: InputDecoration(
                     labelText: 'Entry Type',
                     prefixIcon: const Icon(Icons.category),

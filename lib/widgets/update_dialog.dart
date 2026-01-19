@@ -11,13 +11,13 @@ class UpdateDialog extends StatefulWidget {
   final String releaseNotes;
   final bool forceUpdate;
   const UpdateDialog({
-    Key? key,
+    super.key,
     required this.latestVersion,
     required this.latestBuild,
     required this.downloadUrl,
     required this.releaseNotes,
     this.forceUpdate = false,
-  }) : super(key: key);
+  });
 
   @override
   State<UpdateDialog> createState() => _UpdateDialogState();
@@ -109,8 +109,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
         title: Row(
           children: [
             Icon(Icons.system_update, color: Colors.red[700]),
-            SizedBox(width: 12),
-            Text('Update Available'),
+            const SizedBox(width: 12),
+            const Text('Update Available'),
           ],
         ),
         content: Column(
@@ -118,23 +118,23 @@ class _UpdateDialogState extends State<UpdateDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Version ${widget.latestVersion} is available',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 12),
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(widget.releaseNotes, maxLines: 6, overflow: TextOverflow.ellipsis),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             if (_isDownloading) ...[
               LinearProgressIndicator(value: _progress),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(_status),
             ] else ...[
-              Text(
+              const Text(
                 '⚠️ You must update to continue using the app',
                 style: TextStyle(
                   fontSize: 13,
@@ -162,14 +162,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         Navigator.of(context).pop();
                       }
                     },
-              child: Text('Later'),
+              child: const Text('Later'),
             ),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: _isDownloading ? null : _startDownload,
               icon: _isDownloading
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
@@ -177,12 +177,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         strokeWidth: 2,
                       ),
                     )
-                  : Icon(Icons.download),
+                  : const Icon(Icons.download),
               label: Text(_isDownloading ? 'Downloading...' : 'Download & Install'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[700],
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
