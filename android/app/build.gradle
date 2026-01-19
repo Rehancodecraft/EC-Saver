@@ -21,14 +21,11 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+// Set project root for Flutter before applying flutter.gradle
+project.ext.flutterProjectRoot = file('../..')
+
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-
-// Define Flutter source directory - try both property names
-flutter {
-    source = '../..'
-}
-
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
