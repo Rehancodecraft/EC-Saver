@@ -13,16 +13,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Flutter
+      - name: Set up Flutter with Java 11
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
           channel: 'stable'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.12'
+          java-version: '11'
 
       - name: Decode Keystore
         run: |
@@ -35,10 +31,10 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
 
-      - name: Clean, Upgrade and Build APK
+      - name: Clean, Get Dependencies, and Build APK
         run: |
           flutter clean
-          flutter pub upgrade
+          flutter pub get
           flutter build apk --release
 
       - name: Create Release
