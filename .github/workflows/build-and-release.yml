@@ -19,7 +19,11 @@ jobs:
           channel: 'stable'
 
       - name: Install dependencies
-        run: flutter pub get
+        uses: nick-invision/retry@v2
+        with:
+          max_attempts: 3
+          retry_on: error
+          command: flutter pub get
 
       - name: Build APK
         run: flutter build apk --release
