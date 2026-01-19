@@ -22,6 +22,11 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+// REQUIRED: Flutter source directory configuration MUST be before android block
+flutter {
+    source '../..'
+}
+
 android {
     namespace "com.nexivault.emergency_cases_saver"
     compileSdk 36
@@ -84,11 +89,6 @@ android {
             shrinkResources false
         }
     }
-}
-
-// REQUIRED: Flutter source directory configuration for the Flutter Gradle Plugin
-flutter {
-    source '../..'
 }
 
 dependencies {
