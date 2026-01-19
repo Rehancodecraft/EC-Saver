@@ -1,4 +1,3 @@
-
 name: Build and Release Flutter App
 
 on:
@@ -19,18 +18,10 @@ jobs:
           channel: 'stable'
 
       - name: Install dependencies
-        uses: nick-invision/retry@v2
-        with:
-          max_attempts: 3
-          retry_on: error
-          command: flutter pub get
+        run: flutter pub get
 
       - name: Build APK
-        uses: nick-invision/retry@v2
-        with:
-          max_attempts: 3
-          retry_on: error
-          command: flutter build apk --release --verbose
+        run: flutter build apk --release --verbose
 
       - name: Create Release
         id: create_release
