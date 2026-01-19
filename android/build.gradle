@@ -4,8 +4,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
+        classpath 'com.android.tools.build:gradle:7.3.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.7.20"
     }
 }
 
@@ -20,9 +20,9 @@ allprojects {
 allprojects {
     ext {
         flutter = [
-            compileSdkVersion: 36,
+            compileSdkVersion: 33,
             minSdkVersion: 24,  // Required by url_launcher_android
-            targetSdkVersion: 36
+            targetSdkVersion: 33
         ]
     }
 }
@@ -37,7 +37,7 @@ subprojects {
             android {
                 // Ensure compileSdk is set
                 if (compileSdkVersion == null) {
-                    compileSdkVersion 36
+                    compileSdkVersion 33
                     println "⚠️  Fixed compileSdk for ${project.name}"
                 }
                 
