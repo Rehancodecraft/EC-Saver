@@ -31,6 +31,16 @@ jobs:
           channel: 'stable'
           cache: true
       
+      - name: Create local.properties
+        run: |
+          echo "🔧 Creating local.properties with Flutter SDK path..."
+          cat > android/local.properties << EOF
+          flutter.sdk=$FLUTTER_ROOT
+          sdk.dir=$ANDROID_HOME
+          EOF
+          echo "✅ local.properties created"
+          cat android/local.properties
+      
       - name: Install dependencies
         run: flutter pub get
       
@@ -207,17 +217,6 @@ jobs:
           fi
           
           echo "✅ Keystore file created: $(ls -lh android/app/upload-keystore.jks | awk '{print $5}')"
-          
-          # Create local.properties with Flutter SDK path
-          echo "📋 Creating local.properties..."
-          cat > android/local.properties << EOF
-flutter.sdk=$FLUTTER_ROOT
-sdk.dir=$ANDROID_HOME
-EOF
-          
-          echo "✅ local.properties created"
-          echo "📄 local.properties content:"
-          cat android/local.properties
           
           # Create key.properties for signing
           cat > android/key.properties << EOF
