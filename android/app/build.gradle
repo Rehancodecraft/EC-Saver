@@ -3,9 +3,6 @@ plugins {
     id "kotlin-android"
 }
 
-// Apply the Flutter plugin using the traditional method
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -13,6 +10,15 @@ if (localPropertiesFile.exists()) {
         localProperties.load(reader)
     }
 }
+
+// Get Flutter SDK path from local.properties
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+if (flutterRoot == null) {
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+// Apply the Flutter plugin using the traditional method
+apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
 if (flutterVersionCode == null) {
