@@ -1,198 +1,47 @@
-name: Build and Release APK
+
+name: Build and Release Flutter App
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version number (e.g., 1.0.16)'
-        required: false
-
-permissions:
-  contents: write
 
 jobs:
   build:
-    name: Build and Release APK
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      
-      - name: Setup Flutter
+        uses: actions/checkout@v3
+
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
           channel: 'stable'
-          cache: true
-      
-      - name: Get version from tag or pubspec
-        id: version
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-            echo "📦 Building from tag: v$VERSION"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            echo "📦 Building from manual input: $VERSION"
-          else
-            VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1)
-            echo "📦 Building from pubspec.yaml: $VERSION"
-          fi
-          
-          # Extract build number if present
-          if [[ "$VERSION" == *"+"* ]]; then
-            BUILD=$(echo "$VERSION" | cut -d '+' -f2)
-            VERSION=$(echo "$VERSION" | cut -d '+' -f1)
-          else
-            # Get build from pubspec.yaml
-            BUILD=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f2)
-            if [[ -z "$BUILD" || ! "$BUILD" =~ ^[0-9]+$ ]]; then
-              BUILD="1"
-            fi
-          fi
-          
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "BUILD=$BUILD" >> $GITHUB_OUTPUT
-          echo "🏗️ Building version: $VERSION (build $BUILD)"
-          
-          # Update pubspec.yaml
-          sed -i "s/^version:.*/version: $VERSION+$BUILD/" pubspec.yaml
-          cat pubspec.yaml | grep "^version:"
-      
-      - name: Create local.properties
-        run: |
-          echo "🔧 Creating local.properties..."
-          cat > android/local.properties << EOF
-          flutter.sdk=$FLUTTER_ROOT
-          sdk.dir=$ANDROID_HOME
-          flutter.versionCode=${{ steps.version.outputs.BUILD }}
-          flutter.versionName=${{ steps.version.outputs.VERSION }}
-          flutter.minSdkVersion=21
-          EOF
-          echo "✅ local.properties created"
-          cat android/local.properties
-      
+
       - name: Install dependencies
         run: flutter pub get
-      
-      - name: Setup Android Signing
-        run: |
-          echo "🔐 Setting up Android signing..."
-          mkdir -p android/app
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-          
-          if [ ! -f android/app/upload-keystore.jks ]; then
-            echo "❌ Failed to create keystore!"
-            exit 1
-          fi
-          
-          KEYSTORE_SIZE=$(stat -c%s android/app/upload-keystore.jks 2>/dev/null || stat -f%z android/app/upload-keystore.jks 2>/dev/null)
-          echo "✅ Keystore created: $KEYSTORE_SIZE bytes"
-          
-          # Create key.properties
-          cat > android/key.properties << 'EOF'
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=android/app/upload-keystore.jks
-          EOF
-          
-          echo "✅ key.properties created"
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      
-      - name: Clean Build
-        run: |
-          echo "🧹 Cleaning previous builds..."
-          flutter clean
-          rm -rf build/
-          rm -rf android/.gradle
-          rm -rf android/app/build
-          echo "✅ Clean completed"
-      
+
       - name: Build APK
-        run: |
-          echo "🏗️ Building APK..."
-          flutter --version
-          java -version
-          
-          flutter build apk --release --verbose 2>&1 | tee build.log
-          BUILD_EXIT_CODE=${PIPESTATUS[0]}
-          
-          if [ $BUILD_EXIT_CODE -ne 0 ]; then
-            echo "❌ BUILD FAILED with exit code: $BUILD_EXIT_CODE"
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "📋 LAST 100 LINES OF BUILD LOG:"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            tail -100 build.log
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "🔍 ERRORS:"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            grep -iE "error|fail|exception" build.log | tail -30 || echo "No errors found"
-            exit 1
-          fi
-          
-          echo "✅ Build completed successfully"
-          ls -lh build/app/outputs/flutter-apk/
-      
-      - name: Verify APK
-        run: |
-          if [ ! -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-            echo "❌ APK file not found!"
-            ls -la build/app/outputs/flutter-apk/
-            exit 1
-          fi
-          echo "✅ APK file found"
-          ls -lh build/app/outputs/flutter-apk/app-release.apk
-      
-      - name: Rename APK
-        run: |
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk
-          echo "✅ APK renamed to ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk"
-          ls -lh build/app/outputs/flutter-apk/ec-saver-*.apk
-      
+        run: flutter build apk --release
+
       - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: EC Saver v${{ steps.version.outputs.VERSION }}
-          body: |
-            ## 🚀 EC Saver v${{ steps.version.outputs.VERSION }}
-            
-            ### 📥 Download
-            Download `ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk` below.
-            
-            ### ⚙️ Installation
-            1. Download the APK
-            2. Enable "Install from Unknown Sources" in Android settings
-            3. Install and enjoy!
-            
-            ### 📋 Requirements
-            - Android 5.0 (Lollipop) or higher
-            
-            ### ⚠️ Important
-            - Uninstall old version first if upgrading
-            - All data is stored locally on your device
-            
-            ---
-            **Version:** ${{ steps.version.outputs.VERSION }}+${{ steps.version.outputs.BUILD }}  
-            **Built with:** Flutter 3.24.5 | Designed by NexiVault
-          draft: false
-          prerelease: false
-          files: |
-            build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build/app/outputs/flutter-apk/app-release.apk
+          asset_name: app-release.apk
+          asset_content_type: application/vnd.android.package-archive
