@@ -87,13 +87,17 @@ android {
             
             // If keystore is configured, use it; otherwise will use default debug signing
             if (hasKeystore) {
-                // Handle both absolute paths and relative paths
+                // storeFile path is relative to android/ directory
+                // e.g., "app/upload-keystore.jks" is actually at "android/app/upload-keystore.jks"
                 def storeFilePath = keystoreProperties['storeFile']
-                if (!new File(storeFilePath).isAbsolute()) {
-                    // Relative path - assume it's in android/app/
-                    storeFilePath = "android/app/${storeFilePath}"
+                def keystoreFile = new File(storeFilePath)
+                
+                if (!keystoreFile.isAbsolute()) {
+                    // Path is relative to the android/ directory
+                    keystoreFile = rootProject.file(storeFilePath)
                 }
-                storeFile file(storeFilePath)
+                
+                storeFile keystoreFile
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
@@ -101,23 +105,22 @@ android {
                 // Enable v1 and v2 signing for compatibility
                 v1SigningEnabled true
                 v2SigningEnabled true
+                
+                println "✅ Release signing configured:"
+                println "   - Keystore: ${keystoreFile.absolutePath}"
+                println "   - Alias: ${keystoreProperties['keyAlias']}"
+                println "   - v1 Signing: ${v1SigningEnabled}"
+                println "   - v2 Signing: ${v2SigningEnabled}"
+            } else {
+                println "⚠️  No release signing configured - using debug signing"
             }
-            // If no keystore configured, don't set anything - will use default debug signing
         }
     }
 
     buildTypes {
         release {
-            // Use release signing if configured, otherwise will use default debug signing
-            try {
-                def releaseConfig = signingConfigs.release
-                if (releaseConfig.storeFile != null) {
-                    signingConfig signingConfigs.release
-                }
-            } catch (Exception e) {
-                // If release signing not configured, use default (debug)
-                // This is expected when no keystore is set up
-            }
+            // Always use release signing configuration
+            signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
         }
