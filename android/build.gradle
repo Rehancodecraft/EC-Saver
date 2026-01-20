@@ -21,9 +21,9 @@ allprojects {
 allprojects {
     ext {
         flutter = [
-            compileSdkVersion: 34,
+            compileSdkVersion: 36,
             minSdkVersion: 24,  // Required by url_launcher_android
-            targetSdkVersion: 34
+            targetSdkVersion: 36
         ]
     }
 }
