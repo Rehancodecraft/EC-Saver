@@ -115,6 +115,8 @@ jobs:
           rm -rf build/
           rm -rf android/.gradle
           rm -rf android/app/build
+          # Ensure Gradle wrapper uses our pinned version (8.5.2)
+          rm -rf ~/.gradle/wrapper/dists
           echo "✅ Clean completed"
 
       - name: Build APK
