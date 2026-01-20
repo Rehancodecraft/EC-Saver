@@ -189,4 +189,4 @@ class WebStorageService implements DatabaseService {
   Future<void> close() async {
     // Not needed for shared_preferences
   }
-le}
+}
