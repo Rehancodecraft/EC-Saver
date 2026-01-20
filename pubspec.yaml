@@ -17,7 +17,7 @@ dependencies:
   intl: ^0.19.0
   
   # UI & Fonts
-  google_fonts: ^6.1.0
+  # google_fonts: ^6.1.0 #<- Removed for local font bundling
   
   # Utilities
   url_launcher: ^6.2.2
@@ -50,3 +50,15 @@ flutter:
     - assets/image/logo.png
     - assets/image/background.png
     - assets/image/landpagebackground.jpg
+    - google_fonts/
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: google_fonts/Poppins-Regular.ttf
+        - asset: google_fonts/Poppins-Italic.ttf
+          style: italic
+        - asset: google_fonts/Poppins-Bold.ttf
+          weight: 700
+        - asset: google_fonts/Poppins-SemiBold.ttf
+          weight: 600

@@ -138,10 +138,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header Icon
-              Center(
+              const Center(
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: const Icon(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Icon(
                     Icons.feedback_outlined,
                     size: 50,
                     color: AppColors.primaryRed,
@@ -316,7 +316,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.primaryRed, size: 20),
+                    const Icon(Icons.info_outline, color: AppColors.primaryRed, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(

@@ -152,7 +152,7 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
       appBar: AppBar(
         title: const Text('About'),
       ),
-      drawer: DrawerMenu(currentRoute: '/about'),
+      drawer: const DrawerMenu(currentRoute: '/about'),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: ScaleTransition(
@@ -300,13 +300,13 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
             const SizedBox(height: AppSpacing.lg),
 
             // Description
-            Card(
+            const Card(
               child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.info_outline, color: AppColors.primaryRed),
                         SizedBox(width: AppSpacing.sm),
@@ -320,8 +320,8 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: 12),
+                    Text(
                       'This is free and private application specially designed for rescuers, allowing you to save your emergency numbers and access them instantly whenever needed. In addition, the app enables you to maintain and update your complete professional record in an organized way.',
                       style: TextStyle(
                         fontSize: 15,

@@ -7,7 +7,7 @@ import '../utils/districts_data.dart';
 import '../models/user_profile.dart';
 
 class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({Key? key}) : super(key: key);
+  const RegistrationScreen({super.key});
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -358,7 +358,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 
                 // Designation Dropdown (Short forms only)
                 DropdownButtonFormField<String>(
-                  value: _selectedDesignation,
+                  initialValue: _selectedDesignation,
                   decoration: InputDecoration(
                     labelText: 'Designation *',
                     prefixIcon: const Icon(Icons.work),
@@ -387,7 +387,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 
                 // District Dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedDistrict,
+                  initialValue: _selectedDistrict,
                   decoration: InputDecoration(
                     labelText: 'District *',
                     prefixIcon: const Icon(Icons.location_city),
@@ -421,7 +421,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 
                 // Tehsil Dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedTehsil,
+                  initialValue: _selectedTehsil,
                   decoration: InputDecoration(
                     labelText: 'Tehsil *',
                     prefixIcon: const Icon(Icons.map),

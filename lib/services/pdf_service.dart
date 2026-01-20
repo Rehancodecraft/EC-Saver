@@ -99,7 +99,7 @@ class PdfService {
                       
                       pw.Text(
                         month,
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 18,
                           color: PdfColors.grey700,
                         ),
@@ -185,7 +185,7 @@ class PdfService {
                             _buildTableCell(emergency.emergencyType),
                           ],
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
                 ],
@@ -243,7 +243,7 @@ class PdfService {
                             _buildTableCell(offDayType),
                           ],
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
                 ],

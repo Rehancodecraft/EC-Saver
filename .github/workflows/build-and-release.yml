@@ -1,4 +1,4 @@
-name: Build and Release APK
+name: Build and Release Flutter App
 
 on:
   push:
@@ -15,26 +15,23 @@ permissions:
 
 jobs:
   build:
-    name: Build and Release APK
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: Setup Flutter
+
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
-      
+
       - name: Get version from tag or pubspec
         id: version
         run: |
@@ -48,7 +45,7 @@ jobs:
             VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d '+' -f1)
             echo "📦 Building from pubspec.yaml: $VERSION"
           fi
-          
+
           # Extract build number if present
           if [[ "$VERSION" == *"+"* ]]; then
             BUILD=$(echo "$VERSION" | cut -d '+' -f2)
@@ -60,15 +57,15 @@ jobs:
               BUILD="1"
             fi
           fi
-          
+
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "BUILD=$BUILD" >> $GITHUB_OUTPUT
           echo "🏗️ Building version: $VERSION (build $BUILD)"
-          
+
           # Update pubspec.yaml
           sed -i "s/^version:.*/version: $VERSION+$BUILD/" pubspec.yaml
           cat pubspec.yaml | grep "^version:"
-      
+
       - name: Create local.properties
         run: |
           echo "🔧 Creating local.properties..."
@@ -81,24 +78,24 @@ jobs:
           EOF
           echo "✅ local.properties created"
           cat android/local.properties
-      
+
       - name: Install dependencies
         run: flutter pub get
-      
+
       - name: Setup Android Signing
         run: |
           echo "🔐 Setting up Android signing..."
           mkdir -p android/app
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-          
+
           if [ ! -f android/app/upload-keystore.jks ]; then
             echo "❌ Failed to create keystore!"
             exit 1
           fi
-          
+
           KEYSTORE_SIZE=$(stat -c%s android/app/upload-keystore.jks 2>/dev/null || stat -f%z android/app/upload-keystore.jks 2>/dev/null)
           echo "✅ Keystore created: $KEYSTORE_SIZE bytes"
-          
+
           # Create key.properties
           cat > android/key.properties << 'EOF'
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
@@ -106,11 +103,11 @@ jobs:
           keyAlias=${{ secrets.KEY_ALIAS }}
           storeFile=android/app/upload-keystore.jks
           EOF
-          
+
           echo "✅ key.properties created"
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      
+
       - name: Clean Build
         run: |
           echo "🧹 Cleaning previous builds..."
@@ -119,16 +116,16 @@ jobs:
           rm -rf android/.gradle
           rm -rf android/app/build
           echo "✅ Clean completed"
-      
+
       - name: Build APK
         run: |
           echo "🏗️ Building APK..."
           flutter --version
           java -version
-          
+
           flutter build apk --release --verbose 2>&1 | tee build.log
           BUILD_EXIT_CODE=${PIPESTATUS[0]}
-          
+
           if [ $BUILD_EXIT_CODE -ne 0 ]; then
             echo "❌ BUILD FAILED with exit code: $BUILD_EXIT_CODE"
             echo ""
@@ -140,30 +137,30 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🔍 ERRORS:"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            grep -iE "error|fail|exception" build.log | tail -30 || echo "No errors found"
+            grep -iE \"error|fail|exception\" build.log | tail -30 || echo \"No errors found\"
             exit 1
           fi
-          
+
           echo "✅ Build completed successfully"
           ls -lh build/app/outputs/flutter-apk/
-      
+
       - name: Verify APK
         run: |
-          if [ ! -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-            echo "❌ APK file not found!"
+          if [ ! -f \"build/app/outputs/flutter-apk/app-release.apk\" ]; then
+            echo \"❌ APK file not found!\"
             ls -la build/app/outputs/flutter-apk/
             exit 1
           fi
-          echo "✅ APK file found"
+          echo \"✅ APK file found\"
           ls -lh build/app/outputs/flutter-apk/app-release.apk
-      
+
       - name: Rename APK
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk \
              build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk
-          echo "✅ APK renamed to ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk"
+          echo \"✅ APK renamed to ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk\"
           ls -lh build/app/outputs/flutter-apk/ec-saver-*.apk
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -171,25 +168,25 @@ jobs:
           name: EC Saver v${{ steps.version.outputs.VERSION }}
           body: |
             ## 🚀 EC Saver v${{ steps.version.outputs.VERSION }}
-            
+
             ### 📥 Download
             Download `ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk` below.
-            
+
             ### ⚙️ Installation
             1. Download the APK
             2. Enable "Install from Unknown Sources" in Android settings
             3. Install and enjoy!
-            
+
             ### 📋 Requirements
             - Android 5.0 (Lollipop) or higher
-            
+
             ### ⚠️ Important
             - Uninstall old version first if upgrading
             - All data is stored locally on your device
-            
+
             ---
-            **Version:** ${{ steps.version.outputs.VERSION }}+${{ steps.version.outputs.BUILD }}  
-            **Built with:** Flutter 3.24.5 | Designed by NexiVault
+            **Version:** ${{ steps.version.outputs.VERSION }}+${{ steps.version.outputs.BUILD }}
+            **Built with:** Flutter stable | Designed by NexiVault
           draft: false
           prerelease: false
           files: |

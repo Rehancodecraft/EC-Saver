@@ -6,7 +6,7 @@ import '../utils/constants.dart';
 import '../widgets/drawer_menu.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();

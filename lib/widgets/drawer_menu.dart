@@ -8,9 +8,9 @@ class DrawerMenu extends StatefulWidget {
   final String currentRoute;
 
   const DrawerMenu({
-    Key? key,
+    super.key,
     required this.currentRoute,
-  }) : super(key: key);
+  });
 
   @override
   State<DrawerMenu> createState() => _DrawerMenuState();

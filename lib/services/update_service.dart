@@ -12,7 +12,7 @@ class UpdateService {
   // Configure your repo here
   static const String githubOwner = 'Rehancodecraft';
   static const String githubRepo = 'EC-Saver';
-  static final String releasesLatestUrl =
+  static const String releasesLatestUrl =
       'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
 
   // Compare semantic versions: returns 1 if a>b, -1 if a<b, 0 if equal
@@ -282,7 +282,7 @@ class UpdateService {
                 await file.delete();
               } catch (_) {}
             }
-            throw e;
+            rethrow;
           } finally {
             if (downloadSuccess) {
               await sink.close();
@@ -311,7 +311,7 @@ class UpdateService {
 
           // Verify minimum file size
           if (fileSize < 1000000) { // Less than 1MB is suspicious
-            throw Exception('Downloaded APK file is too small (${fileSize} bytes). File may be corrupted.');
+            throw Exception('Downloaded APK file is too small ($fileSize bytes). File may be corrupted.');
           }
 
           // Small delay to ensure file is fully written
@@ -343,7 +343,7 @@ class UpdateService {
             onProgress(-1.0); // Signal retry to UI
             await Future.delayed(Duration(seconds: waitSeconds));
           } else {
-            throw lastError!;
+            throw lastError;
           }
         }
       } catch (e) {
@@ -375,7 +375,7 @@ class UpdateService {
 
     // Verify file is not corrupted (basic check)
     if (finalFileSize < 1000000) {
-      throw Exception('APK file is too small (${finalFileSize} bytes). File may be corrupted or incomplete.');
+      throw Exception('APK file is too small ($finalFileSize bytes). File may be corrupted or incomplete.');
     }
 
     // Use native method channel for installation (more reliable than OpenFile)

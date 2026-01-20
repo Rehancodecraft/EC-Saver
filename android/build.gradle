@@ -38,7 +38,7 @@ subprojects {
             android {
                 // Ensure compileSdk is set
                 if (compileSdkVersion == null) {
-                    compileSdkVersion 36
+                    compileSdkVersion 34
                     println "⚠️  Fixed compileSdk for ${project.name}"
                 }
                 

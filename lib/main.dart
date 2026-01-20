@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart'; // <- No longer needed
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
@@ -27,7 +27,7 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -37,26 +37,28 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primaryColor: AppColors.primaryRed,
         scaffoldBackgroundColor: Colors.white,
-        textTheme: GoogleFonts.poppinsTextTheme(),
-        appBarTheme: AppBarTheme(
+        fontFamily: 'Poppins', // <- Set the default font family
+        appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.primaryRed,
-          foregroundColor: Colors.white, // Add this - fixes all AppBar text/icons
+          foregroundColor: Colors.white, 
           elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.white),
-          titleTextStyle: GoogleFonts.poppins(
+          iconTheme: IconThemeData(color: Colors.white),
+          titleTextStyle: TextStyle(
+            fontFamily: 'Poppins',
             fontSize: 20,
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
-          systemOverlayStyle: const SystemUiOverlayStyle(
+          systemOverlayStyle: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: Brightness.light,
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white, // Global fix for all ElevatedButtons
+            foregroundColor: Colors.white, 
             textStyle: const TextStyle(
+              fontFamily: 'Poppins', // <- Consistent font family
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -70,7 +72,6 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       onGenerateRoute: (settings) {
-        // Custom page transitions
         Widget page;
         switch (settings.name) {
           case '/':
@@ -98,7 +99,6 @@ class MyApp extends StatelessWidget {
             page = const SplashScreen();
         }
 
-        // No transition for splash screen
         if (settings.name == '/') {
           return MaterialPageRoute(
             settings: settings,
@@ -106,7 +106,6 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // Custom transitions for all other pages
         return PageRouteBuilder(
           settings: settings,
           pageBuilder: (context, animation, secondaryAnimation) => page,

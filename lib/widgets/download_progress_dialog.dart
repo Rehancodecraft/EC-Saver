@@ -7,11 +7,11 @@ class DownloadProgressDialog extends StatelessWidget {
   final String totalSize;
 
   const DownloadProgressDialog({
-    Key? key,
+    super.key,
     required this.progress,
     required this.downloadedSize,
     required this.totalSize,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
