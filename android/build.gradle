@@ -4,9 +4,9 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Align with Flutter stable toolchain
-        classpath 'com.android.tools.build:gradle:8.5.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24"
+        // Align with Flutter stable toolchain - AGP 8.9.1 requires Gradle 8.9+
+        classpath 'com.android.tools.build:gradle:8.9.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
     }
 }
 
