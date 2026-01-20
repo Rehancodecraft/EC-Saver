@@ -59,7 +59,7 @@ android {
         release {
             // Use environment variables for CI/CD (GitHub Actions)
             // For local builds, create android/key.properties file
-            def keystorePropertiesFile = rootProject.file("android/key.properties")
+            def keystorePropertiesFile = rootProject.file("key.properties")
             def keystoreProperties = new Properties()
             def hasKeystore = false
             
@@ -93,7 +93,7 @@ android {
                 def keystoreFile = new File(storeFilePath)
                 
                 if (!keystoreFile.isAbsolute()) {
-                    // Path is relative to the android/ directory
+                    // Path is relative to the android/ directory (rootProject)
                     keystoreFile = rootProject.file(storeFilePath)
                 }
                 
