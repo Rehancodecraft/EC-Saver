@@ -97,6 +97,10 @@ android {
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
+                
+                // Enable v1 and v2 signing for compatibility
+                v1SigningEnabled true
+                v2SigningEnabled true
             }
             // If no keystore configured, don't set anything - will use default debug signing
         }
@@ -126,5 +130,5 @@ flutter {
 
 dependencies {
     // Use an explicit Kotlin stdlib version matching the Kotlin Gradle plugin in android/build.gradle
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0"
 }
