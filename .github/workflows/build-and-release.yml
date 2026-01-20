@@ -77,7 +77,7 @@ jobs:
           sdk.dir=$ANDROID_HOME
           flutter.versionCode=${{ steps.version.outputs.BUILD }}
           flutter.versionName=${{ steps.version.outputs.VERSION }}
-          flutter.minSdkVersion=21
+          flutter.minSdkVersion=24
           EOF
           echo "✅ local.properties created"
           cat android/local.properties

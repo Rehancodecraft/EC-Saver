@@ -4,8 +4,9 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
+        // Align with Flutter stable toolchain
+        classpath 'com.android.tools.build:gradle:8.5.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24"
     }
 }
 
@@ -20,9 +21,9 @@ allprojects {
 allprojects {
     ext {
         flutter = [
-            compileSdkVersion: 36,
+            compileSdkVersion: 34,
             minSdkVersion: 24,  // Required by url_launcher_android
-            targetSdkVersion: 36
+            targetSdkVersion: 34
         ]
     }
 }
