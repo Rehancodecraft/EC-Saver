@@ -146,19 +146,19 @@ jobs:
 
       - name: Verify APK
         run: |
-          if [ ! -f \"build/app/outputs/flutter-apk/app-release.apk\" ]; then
-            echo \"❌ APK file not found!\"
+          if [ ! -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            echo "❌ APK file not found!"
             ls -la build/app/outputs/flutter-apk/
             exit 1
           fi
-          echo \"✅ APK file found\"
+          echo "✅ APK file found"
           ls -lh build/app/outputs/flutter-apk/app-release.apk
 
       - name: Rename APK
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk \
              build/app/outputs/flutter-apk/ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk
-          echo \"✅ APK renamed to ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk\"
+          echo "✅ APK renamed to ec-saver-v${{ steps.version.outputs.VERSION }}-release.apk"
           ls -lh build/app/outputs/flutter-apk/ec-saver-*.apk
 
       - name: Create Release
