@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan. Official mobile app for emergency responders.">
+    <meta name="keywords" content="Rescue 1122, Emergency, Pakistan, EC Saver, Emergency Cases">
+    <meta name="author" content="NexiVault">
+    <title>EC Saver - Emergency Cases Saver | Rescue 1122 Pakistan</title>
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #D32F2F 0%, #B71C1C 100%);
+            color: white;
+            padding: 100px 20px 80px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .hero-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        .hero h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .hero .tagline {
+            font-size: 1.3em;
+            margin-bottom: 40px;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 18px 50px;
+            background: white;
+            color: #D32F2F;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: 600;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 35px rgba(0,0,0,0.3);
+            background: #f5f5f5;
+        }
+
+        .download-btn i {
+            margin-right: 10px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .section {
+            background: white;
+            padding: 50px;
+            margin-bottom: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        .section h2 {
+            color: #D32F2F;
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #D32F2F;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            padding: 30px;
+            background: linear-gradient(135deg, #f8f8f8 0%, #ffffff 100%);
+            border-radius: 12px;
+            border-left: 4px solid #D32F2F;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h3 {
+            color: #D32F2F;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .feature-icon {
+            font-size: 1.5em;
+            margin-right: 12px;
+        }
+
+        .security-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 40px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            min-width: 200px;
+        }
+
+        .stat-number {
+            font-size: 3em;
+            color: #D32F2F;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 1.1em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .footer {
+            background: #212121;
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+        }
+
+        .footer a {
+            color: #FF9800;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .platform-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: #388E3C;
+            color: white;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+
+        .platform-badge.android {
+            background: #3DDC84;
+            color: #000;
+        }
+
+        .warning-box {
+            background: #FFF3E0;
+            border-left: 4px solid #FF9800;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box h4 {
+            color: #F57C00;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+            
+            .hero .tagline {
+                font-size: 1em;
+            }
+
+            .section {
+                padding: 30px 20px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #D32F2F;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        ul li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        ul li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero">
+        <img src="assets/logo.png" alt="EC Saver Logo" class="hero-logo" onerror="this.style.display='none'">
+        <h1>EC Saver</h1>
+        <p class="tagline">Emergency Cases Saver for Rescue 1122 Pakistan</p>
+        <p style="font-size: 1.1em; margin-bottom: 30px;">Official mobile app for emergency responders to maintain accurate records offline</p>
+        
+        <div>
+            <a href="https://github.com/Rehancodecraft/EC-Saver/releases/latest/download/ec-saver-v1.1.0-release.apk" class="download-btn">
+                📱 Download APK (v1.1.0)
+            </a>
+            <a href="https://github.com/Rehancodecraft/EC-Saver/releases" class="download-btn btn-secondary">
+                📋 View All Releases
+            </a>
+        </div>
+        
+        <div class="version-badge">
+            🔒 Latest Version: 1.1.0 (Security Hardened) | Released: Jan 21, 2025
+        </div>
+    </div>
+
+    <!-- Platform Support -->
+    <div class="container">
+        <div style="text-align: center; margin: -40px 0 40px;">
+            <span class="platform-badge android">✓ Android 5.0+</span>
+            <span class="platform-badge">⏳ iOS (Coming Soon)</span>
+            <span class="platform-badge" style="background: #666;">✗ Web Removed (v1.1.0)</span>
+        </div>
+
+        <!-- Features Section -->
+        <div class="section">
+            <h2>🎯 Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3><span class="feature-icon">📴</span> 100% Offline</h3>
+                    <p>Works completely offline with local SQLite database. All emergency records stored on your device.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🔒</span> Secure Registration <span class="security-badge">NEW</span></h3>
+                    <p>Internet-required one-time registration prevents duplicate accounts and ensures data integrity.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">⚡</span> Quick Print All <span class="security-badge">NEW</span></h3>
+                    <p>Print all EC records from sidebar with auto-save to Downloads folder in one tap.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🏥</span> Emergency Types <span class="security-badge">NEW</span></h3>
+                    <p>Dropdown with 6 predefined codes: ME, RC, FO, RO, WR, OO for standardized entries.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">📊</span> Statistics Dashboard</h3>
+                    <p>View today's entries, monthly totals, and leaves count at a glance.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">📄</span> PDF Export</h3>
+                    <p>Generate comprehensive PDF reports with user info, EC records, and off days.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">📅</span> Off Days Management</h3>
+                    <p>Track day-offs, leaves, and gazetted holidays. Schedule up to 1 year in advance.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🔍</span> Search & Filter</h3>
+                    <p>Find emergencies by EC number, type, or date with powerful search capabilities.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🔄</span> Auto-Update</h3>
+                    <p>Automatic update detection and installation with retry logic and progress tracking.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Section -->
+        <div class="section">
+            <h2>🔐 Security Hardened (v1.1.0)</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🛡️</span> Code Obfuscation</h3>
+                    <p>ProGuard/R8 enabled to protect against reverse engineering and tampering.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">💉</span> SQL Injection Prevention</h3>
+                    <p>All database queries use parameterized statements for maximum security.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🔐</span> Encrypted Storage</h3>
+                    <p>Local SQLite database with encryption. No cloud storage of sensitive data.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🌐</span> HTTPS Only</h3>
+                    <p>All network requests encrypted via TLS/SSL. No insecure connections.</p>
+                </div>
+            </div>
+
+            <ul style="margin-top: 30px; columns: 2; column-gap: 40px;">
+                <li>Minimal permissions (only essentials)</li>
+                <li>Input validation on all forms</li>
+                <li>Production debug logs disabled</li>
+                <li>Portrait-only orientation lock</li>
+                <li>Open source MIT license</li>
+                <li>No third-party analytics</li>
+                <li>No location tracking</li>
+                <li>Comprehensive security audit</li>
+            </ul>
+        </div>
+
+        <!-- What's New -->
+        <div class="section">
+            <h2>🆕 What's New in v1.1.0</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div>
+                    <h3 style="color: #388E3C; margin-bottom: 15px;">✅ Added</h3>
+                    <ul>
+                        <li>ProGuard/R8 code obfuscation</li>
+                        <li>Centralized AppConfig</li>
+                        <li>MIT LICENSE with attributions</li>
+                        <li>SECURITY.md documentation</li>
+                        <li>Portrait-only orientation</li>
+                        <li>Enhanced input validation</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="color: #F44336; margin-bottom: 15px;">🗑️ Removed</h3>
+                    <ul>
+                        <li>All web platform support</li>
+                        <li>WebStorageService (200+ lines)</li>
+                        <li>Unused build scripts</li>
+                        <li>Development documentation</li>
+                        <li>Netlify deployment files</li>
+                        <li>Debug logging in production</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="section">
+            <h2>📊 App Statistics</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Offline Operation</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">50MB</div>
+                    <div class="stat-label">App Size</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">46+</div>
+                    <div class="stat-label">Punjab Districts</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">6</div>
+                    <div class="stat-label">Emergency Types</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Installation -->
+        <div class="section">
+            <h2>📦 Installation</h2>
+            <h3 style="margin: 20px 0;">Requirements</h3>
+            <ul>
+                <li>Android 5.0 (Lollipop) or higher</li>
+                <li>50 MB free storage space</li>
+                <li>Internet connection (for one-time registration only)</li>
+            </ul>
+
+            <h3 style="margin: 30px 0 20px;">Steps</h3>
+            <ol style="list-style: decimal; padding-left: 25px;">
+                <li style="padding-left: 10px; margin-bottom: 15px;"><strong>Download APK</strong> - Click the download button above</li>
+                <li style="padding-left: 10px; margin-bottom: 15px;"><strong>Enable Installation</strong> - Go to Settings → Security → Unknown Sources (if needed)</li>
+                <li style="padding-left: 10px; margin-bottom: 15px;"><strong>Install</strong> - Open the downloaded APK and follow prompts</li>
+                <li style="padding-left: 10px; margin-bottom: 15px;"><strong>Register</strong> - Complete one-time registration (requires internet)</li>
+                <li style="padding-left: 10px;"><strong>Start Using</strong> - App works 100% offline after registration</li>
+            </ol>
+
+            <div class="warning-box">
+                <h4>⚠️ Important Notice</h4>
+                <p><strong>Data Loss Warning:</strong> If you uninstall this app, all your data will be permanently lost. Always export PDF reports regularly for backup. NexiVault will not be responsible for any data loss.</p>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="section">
+            <h2>❓ Frequently Asked Questions</h2>
+            
+            <h3 style="margin: 25px 0 15px; color: #555;">Why do user IDs start at 43, 44, 45 instead of 1, 2, 3?</h3>
+            <p>This is <strong>completely normal</strong>. The IDs in the central database represent actual registration order across all users. IDs 1-42 were earlier registrations. Your phone number is the unique identifier, not the ID. Local emergency records always start from 1 on each device.</p>
+
+            <h3 style="margin: 25px 0 15px; color: #555;">Why is internet required for registration?</h3>
+            <p><strong>Security feature</strong> - prevents duplicate accounts and ensures central validation. After one-time registration, app works 100% offline.</p>
+
+            <h3 style="margin: 25px 0 15px; color: #555;">What happens if I uninstall?</h3>
+            <p>All local data is <strong>permanently deleted</strong> - emergency records, off days, statistics. This is Android's standard behavior. Always export PDFs regularly!</p>
+
+            <h3 style="margin: 25px 0 15px; color: #555;">Can I use on multiple devices?</h3>
+            <p>Yes, but each device maintains independent emergency records. Your profile (name, phone) syncs with central database.</p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p style="font-size: 1.2em; margin-bottom: 20px;"><strong>Developed by NexiVault for Rescue 1122 Pakistan</strong></p>
+        <p style="margin: 10px 0;">
+            <a href="https://github.com/Rehancodecraft/EC-Saver" target="_blank">GitHub Repository</a> | 
+            <a href="https://github.com/Rehancodecraft/EC-Saver/releases" target="_blank">All Releases</a> | 
+            <a href="https://github.com/Rehancodecraft/EC-Saver/blob/main/SECURITY.md" target="_blank">Security Policy</a> | 
+            <a href="https://github.com/Rehancodecraft/EC-Saver/blob/main/LICENSE" target="_blank">License</a>
+        </p>
+        <p style="margin-top: 20px; opacity: 0.8;">
+            © 2025 NexiVault. Licensed under MIT License.<br>
+            Made with ❤️ for Rescue 1122 Pakistan heroes
+        </p>
+    </div>
+
+    <script>
+        // Auto-fetch latest version from GitHub API
+        fetch('https://api.github.com/repos/Rehancodecraft/EC-Saver/releases/latest')
+            .then(response => response.json())
+            .then(data => {
+                const version = data.tag_name;
+                const downloadUrl = data.assets.find(a => a.name.endsWith('.apk'))?.browser_download_url;
+                
+                if (downloadUrl) {
+                    document.querySelectorAll('.download-btn')[0].href = downloadUrl;
+                    document.querySelectorAll('.download-btn')[0].innerHTML = `📱 Download APK (${version})`;
+                }
+            })
+            .catch(err => console.log('Could not fetch latest version'));
+    </script>
+</body>
+</html>
