@@ -24,6 +24,9 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   final _notesController = TextEditingController();
   final DatabaseService _databaseService = DatabaseService();
 
+  // Static variable to remember last selected date across form instances
+  static DateTime? _lastSelectedDate;
+
   DateTime? _selectedDate;
   bool _isLateEntry = false;
   bool _isSaving = false;
@@ -37,7 +40,8 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
+    // Use last selected date if available, otherwise use current date
+    _selectedDate = _lastSelectedDate ?? DateTime.now();
 
     // Listen to form changes
     _ecNumberController.addListener(_checkFormInput);
@@ -141,6 +145,8 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
 
       setState(() {
         _selectedDate = picked;
+        // Store the selected date to persist across form instances
+        _lastSelectedDate = picked;
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final selectedDay = DateTime(picked.year, picked.month, picked.day);

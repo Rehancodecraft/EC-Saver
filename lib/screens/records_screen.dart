@@ -729,11 +729,11 @@ class _RecordsScreenState extends State<RecordsScreen> {
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: _selectedMonth != null 
-                                ? AppColors.primaryRed 
+                                ? Colors.grey[700]
                                 : Colors.grey[700],
                             side: BorderSide(
                               color: _selectedMonth != null 
-                                  ? AppColors.primaryRed 
+                                  ? Colors.grey[700]!
                                   : Colors.grey[400]!,
                             ),
                           ),
@@ -754,11 +754,11 @@ class _RecordsScreenState extends State<RecordsScreen> {
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: _selectedDate != null 
-                                ? AppColors.primaryRed 
+                                ? Colors.grey[700]
                                 : Colors.grey[700],
                             side: BorderSide(
                               color: _selectedDate != null 
-                                  ? AppColors.primaryRed 
+                                  ? Colors.grey[700]!
                                   : Colors.grey[400]!,
                             ),
                           ),
@@ -811,7 +811,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: hasRecords 
-                                          ? AppColors.primaryRed.withOpacity(0.1)
+                                          ? Colors.grey[100]
                                           : Colors.grey[100],
                                       borderRadius: const BorderRadius.only(
                                         topLeft: Radius.circular(12),
@@ -822,7 +822,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                       children: [
                                         Icon(
                                           Icons.calendar_month,
-                                          color: hasRecords ? AppColors.primaryRed : Colors.grey,
+                                          color: hasRecords ? Colors.grey[700] : Colors.grey,
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
@@ -838,7 +838,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                           decoration: BoxDecoration(
-                                            color: hasRecords ? AppColors.primaryRed : Colors.grey,
+                                            color: hasRecords ? Colors.grey[700] : Colors.grey,
                                             borderRadius: BorderRadius.circular(20),
                                           ),
                                           child: Text(
@@ -940,8 +940,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
           margin: const EdgeInsets.only(bottom: 8, top: 12),
           decoration: BoxDecoration(
             color: offDay != null 
-                ? Colors.orange.withOpacity(0.1)
-                : AppColors.primaryRed.withOpacity(0.1),
+                ? AppColors.primaryRed.withOpacity(0.1)
+                : Colors.grey[100],
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -949,7 +949,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
               Icon(
                 offDay != null ? Icons.event_busy : Icons.calendar_today,
                 size: 16,
-                color: offDay != null ? Colors.orange : AppColors.primaryRed,
+                color: offDay != null ? AppColors.primaryRed : Colors.black54,
               ),
               const SizedBox(width: 8),
               Text(
@@ -957,7 +957,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: offDay != null ? Colors.orange : AppColors.primaryRed,
+                  color: offDay != null ? AppColors.primaryRed : Colors.black87,
                 ),
               ),
               if (offDay != null) ...[
@@ -1033,13 +1033,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              color: AppColors.primaryRed.withOpacity(0.1),
+              border: Border.all(color: AppColors.primaryRed.withOpacity(0.3)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                const Icon(Icons.event_busy, color: Colors.orange, size: 20),
+                const Icon(Icons.event_busy, color: AppColors.primaryRed, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -1050,7 +1050,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                          color: AppColors.primaryRed,
                         ),
                       ),
                       if (additionalNotes != null && additionalNotes.isNotEmpty) ...[
@@ -1154,7 +1154,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.primaryRed,
+                            color: Colors.black87,
                           ),
                         ),
                       ),

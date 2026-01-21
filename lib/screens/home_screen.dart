@@ -267,12 +267,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primaryRed.withOpacity(0.15),
+                                    color: Colors.amber[700]!.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.today,
-                                    color: AppColors.primaryRed,
+                                    color: Colors.amber[700],
                                     size: 18,
                                   ),
                                 ),
@@ -292,10 +292,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             const SizedBox(height: 8),
                             Text(
                               '$_todayCount',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.primaryRed,
+                                color: Colors.amber[700],
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -338,23 +338,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(6),
+                                        padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
                                           color: AppColors.secondaryGreen.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: const Icon(
                                           Icons.calendar_month,
                                           color: AppColors.secondaryGreen,
-                                          size: 18,
+                                          size: 14,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 6),
                                       const Expanded(
                                         child: Text(
                                           'This Month',
                                           style: TextStyle(
-                                            fontSize: 14,
+                                            fontSize: 12,
                                             color: Colors.black87,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -362,11 +362,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   Text(
                                     '$_monthlyCount',
                                     style: const TextStyle(
-                                      fontSize: 26,
+                                      fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.secondaryGreen,
                                     ),
@@ -375,10 +375,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   const Text(
                                     'Total Entries',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 9,
                                       color: Colors.grey,
                                       fontWeight: FontWeight.w600,
+                                      height: 1.2,
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
@@ -409,23 +412,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(6),
+                                        padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
-                                          color: Colors.orange.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(6),
+                                          color: AppColors.primaryRed.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: const Icon(
                                           Icons.event_busy,
-                                          color: Colors.orange,
-                                          size: 18,
+                                          color: AppColors.primaryRed,
+                                          size: 14,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 6),
                                       const Expanded(
                                         child: Text(
                                           'Leaves',
                                           style: TextStyle(
-                                            fontSize: 14,
+                                            fontSize: 12,
                                             color: Colors.black87,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -433,14 +436,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   Text(
                                     '$_monthlyLeaves',
                                     style: const TextStyle(
-                                      fontSize: 26,
+                                      fontSize: 20,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.orange,
+                                      color: AppColors.primaryRed,
                                     ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'Off Days',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
@@ -472,6 +487,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           icon: const Icon(Icons.add_circle_outline, size: 28, color: Colors.white),
                           label: const Text(
                             'Add New Emergency',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // BMI Calculator Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 60,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/bmi-calculator');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 3,
+                          ),
+                          icon: const Icon(Icons.monitor_weight_outlined, size: 28, color: Colors.white),
+                          label: const Text(
+                            'BMI Calculator',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
