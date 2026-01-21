@@ -1,8 +1,8 @@
 {
-  "version": "1.0.7",
-  "versionCode": 8,
-  "apkUrl": "https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.0.3/ec-saver-v1.0.3-release.apk",
-  "releaseNotes": "Latest updates and fixes",
+  "version": "1.0.30",
+  "versionCode": 30,
+  "apkUrl": "https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.0.30/ec-saver-v1.0.30-release.apk",
+  "releaseNotes": "🎉 New Features:\n• BMI Calculator with cm/inch/feet support\n• Improved color scheme (dark yellow for today's entries, red for leaves)\n• Date persistence across form entries\n• Better records UI with grey theme\n\n🐛 Bug Fixes:\n• Fixed card sizes on home screen\n• Improved color consistency",
   "forceUpdate": false,
   "minSupportedVersion": "1.0.0"
 }
