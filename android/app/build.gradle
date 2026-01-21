@@ -121,8 +121,13 @@ android {
         release {
             // Always use release signing configuration
             signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
+            
+            // Enable code obfuscation and shrinking for security
+            minifyEnabled true
+            shrinkResources true
+            
+            // Use default ProGuard rules optimized for Android
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

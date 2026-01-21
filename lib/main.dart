@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:google_fonts/google_fonts.dart'; // <- No longer needed
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/app_config.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/registration_screen.dart';
@@ -15,16 +15,24 @@ import 'utils/constants.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Supabase asynchronously (don't block startup)
+  // Lock app to portrait mode only for better UX
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  
+  // Initialize Supabase for central user registry
   Supabase.initialize(
-    url: 'https://ssddnidpcjcbajxyhjgg.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzZGRuaWRwY2pjYmFqeHloamdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NTQ3MjksImV4cCI6MjA3OTAzMDcyOX0.UcAIUQB5cXnkX5Yc75qmcm_R8_-JdGB-qY6XrfiYbTU',
+    url: AppConfig.supabaseUrl,
+    anonKey: AppConfig.supabaseAnonKey,
   ).catchError((e) {
-    debugPrint('DEBUG: Supabase init error: $e');
-    return Supabase.instance; // Return existing instance or handle error
+    if (AppConfig.enableDebugLogs) {
+      debugPrint('Supabase initialization error: $e');
+    }
+    return Supabase.instance;
   });
   
-  runApp(const MyApp()); // Don't wait for Supabase
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

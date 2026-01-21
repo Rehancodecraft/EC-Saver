@@ -1,17 +1,12 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/user_profile.dart';
 import '../models/emergency.dart';
 import '../models/off_day.dart';
-import 'web_storage_service.dart' if (dart.library.html) 'web_storage_service.dart';
-import 'mobile_database_service.dart' if (dart.library.io) 'mobile_database_service.dart';
+import 'mobile_database_service.dart';
 
 abstract class DatabaseService {
+  // Mobile-only app - always use SQLite database
   factory DatabaseService() {
-    if (kIsWeb) {
-      return WebStorageService();
-    } else {
-      return MobileDatabaseService();
-    }
+    return MobileDatabaseService();
   }
 
   Future<int> saveUserProfile(UserProfile profile);

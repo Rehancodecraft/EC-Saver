@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/update_service.dart';
@@ -195,21 +194,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Future<void> _checkRegistrationStatus() async {
-    await Future.delayed(const Duration(milliseconds: 1000)); // Reduced from 1500
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     if (!mounted) return;
 
-    // On web, just go to registration
-    if (kIsWeb) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const RegistrationScreen(),
-        ),
-      );
-      return;
-    }
-
-    // On mobile, check registration status
+    // Check registration status from local database
     bool isRegistered = false;
     try {
       isRegistered = await DatabaseService().isUserRegistered();

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.31",
-  "versionCode": 31,
-  "apkUrl": "https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.0.31/ec-saver-v1.0.31-release.apk",
-  "releaseNotes": "New Features:\n  • Emergency Type Dropdown: Select from predefined codes (ME, RC, FO, RO, WR, OO)\n  • Quick Print All: Print all EC records from sidebar with auto-save to Downloads\n\nSecurity & Data Integrity:\n  • Registration now requires internet connection (prevents duplicate accounts)\n  • Centralized database validation for all new registrations\n\nUI Improvements:\n  • Fixed update dialog markdown rendering (## and ### now display correctly)\n  • Changed button text from 'Download & Install' to 'Update'\n  • Update dialog cannot be dismissed during download\n  • Hidden signature info button from About screen\n\nBug Fixes:\n  • Update now runs more reliably\n  • Better error handling in PDF generation",
+  "version": "1.1.0",
+  "versionCode": 32,
+  "apkUrl": "https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.1.0/ec-saver-v1.1.0-release.apk",
+  "releaseNotes": "🔒 Security Hardened Release\n\nMajor Changes:\n  • Mobile-only optimized (removed web support)\n  • ProGuard/R8 code obfuscation enabled\n  • Centralized API configuration\n  • Portrait-only orientation lock\n\nSecurity Enhancements:\n  • Enhanced input validation\n  • Minimal permission principle\n  • Production debug logs disabled\n  • Comprehensive SECURITY.md added\n\nCode Quality:\n  • Removed 200+ lines of unused web code\n  • Better code organization\n  • Added MIT LICENSE with attributions\n  • Cleaned up development documentation\n\nAll v1.0.31 Features Included:\n  • Emergency type dropdown\n  • Quick Print All feature\n  • Internet-required registration\n  • Clean update dialog\n  • Hidden signature info\n\nComplete Security Audit:\n  ✅ SQL injection prevention\n  ✅ Secure data storage\n  ✅ HTTPS-only network calls\n  ✅ No hardcoded secrets\n  ✅ Code obfuscation\n  ✅ Input validation",
   "forceUpdate": false,
   "minSupportedVersion": "1.0.0"
 }

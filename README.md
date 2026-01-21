@@ -2,14 +2,22 @@
 
 **Official emergency incident management system for Rescue 1122 Pakistan personnel.**
 
-A comprehensive mobile application designed to help rescuers maintain accurate records of emergency responses, manage professional records, and track off days, leaves, and gazetted holidays - all working completely offline.
+A comprehensive **mobile application** (Android/iOS) designed to help rescuers maintain accurate records of emergency responses, manage professional records, and track off days, leaves, and gazetted holidays - all working completely offline.
 
-## 📱 Features
+## 📱 Platform Support
+
+- ✅ **Android** 5.0+ (API 21+)
+- ✅ **iOS** 12.0+ (planned)
+- ❌ **Web** - Removed in v1.1.0 for security and performance
+
+## 🎯 Features
 
 ### Core Functionality
 - ✅ **100% Offline Operation** - Works completely offline with local SQLite database
-- ✅ **One-Time Registration** - Register once with SMS OTP verification
+- ✅ **Internet-Required Registration** - Secure one-time registration (prevents duplicate accounts)
 - ✅ **Emergency Case Recording** - Fast and easy emergency case entry with EC numbers
+- ✅ **Emergency Type Dropdown** - Select from 6 predefined codes (ME, RC, FO, RO, WR, OO)
+- ✅ **Quick Print All** - Print all EC records from sidebar with auto-save to Downloads
 - ✅ **Multiple Entries per Date** - Add multiple emergency cases on the same date
 - ✅ **Off Days Management** - Track Day-offs, Leaves, and Gazetted Holidays
 - ✅ **Future Date Planning** - Schedule leaves and holidays in advance (up to 1 year)
@@ -19,6 +27,15 @@ A comprehensive mobile application designed to help rescuers maintain accurate r
 - ✅ **Statistics Dashboard** - View today's entries, monthly totals, and leaves count
 - ✅ **Auto-Update System** - Automatic update detection and installation
 - ✅ **Professional UI** - Clean, Material Design 3 interface with Rescue 1122 branding
+
+### Security Features (v1.1.0+)
+- 🔒 **ProGuard/R8 Obfuscation** - Code protected against reverse engineering
+- 🔒 **SQL Injection Prevention** - All queries use parameterized statements
+- 🔒 **Secure Data Storage** - Local SQLite with encryption
+- 🔒 **HTTPS Only** - All network requests encrypted
+- 🔒 **Minimal Permissions** - Only essential permissions requested
+- 🔒 **Input Validation** - All user inputs sanitized
+- 🔒 **Open Source** - MIT licensed, auditable code
 
 ### Data Management
 - ✅ **Local Storage** - All data stored locally on device (privacy-first)
@@ -41,9 +58,22 @@ A comprehensive mobile application designed to help rescuers maintain accurate r
 
 ### Download APK
 
-**Latest Release:** [Download v1.2.8](https://github.com/Rehancodecraft/EC-Saver/releases/latest)
+**Latest Release:** [v1.1.0 - Security Hardened](https://github.com/Rehancodecraft/EC-Saver/releases/latest)
 
-Or visit the landing page: [EC Saver Landing Page](https://ec-saver.netlify.app) (if deployed)
+### Requirements
+- Android 5.0 (Lollipop) or higher
+- 50 MB free storage space
+- Internet connection (for registration only)
+
+### Installation Steps
+1. Download the APK from releases
+2. Enable "Install from Unknown Sources" in Android settings
+3. Install and enjoy!
+
+### First-Time Setup
+- Internet connection required for registration (security measure)
+- Register once - works offline afterwards
+- All data stored locally on your device
 
 ### For Developers
 
@@ -293,6 +323,119 @@ All **46 districts** of Punjab, Pakistan including:
 
 ## 📝 Version History
 
+## ❓ Frequently Asked Questions
+
+### Why do user IDs start at 43, 44, 45 instead of 1, 2, 3?
+
+**This is completely normal and expected behavior.**
+
+The IDs you see in the Supabase central database represent the **actual registration order across all users globally**. IDs 1-42 were earlier registrations (possibly test accounts or first users).
+
+**Two Different ID Systems:**
+
+1. **Central Registry (Supabase)** - Global user IDs across all users
+   - Example: 43, 44, 45, 47, 53 (matches actual registration order)
+   - Persistent across all devices
+   - Cannot be reset without admin access
+
+2. **Local App Database (SQLite)** - Emergency case IDs per device
+   - Always starts from 1 for new installations
+   - Independent on each device
+   - Your emergency records: 1, 2, 3, 4, 5...
+
+**Why It Works This Way:**
+- Central database tracks ALL Rescue 1122 personnel nationwide
+- Your phone number (03XX-XXXXXXX) is the unique identifier, not the ID
+- IDs are just internal database references
+- This is standard database architecture
+
+**To Reset Central Database (Admin Only):**
+```sql
+-- Run in Supabase SQL Editor
+ALTER SEQUENCE registered_users_id_seq RESTART WITH 1;
+DELETE FROM registered_users WHERE id < 50; -- Remove test accounts
+```
+
+**Recommendation:** Keep existing IDs - they represent legitimate registration history. Only reset when deploying fresh production database.
+
+### Why is internet required for registration?
+
+**Security Feature:** Prevents duplicate accounts and ensures central database validation. The app checks if your phone number is already registered. After registration, the app works 100% offline.
+
+### What happens to my data if I uninstall?
+
+**All local data is deleted permanently** - emergency records, off days, statistics, etc. This is Android's standard behavior. Always export PDFs regularly for backup.
+
+### Can I use the app on multiple devices?
+
+Yes, but each device maintains **independent emergency records**. Your registration (name, phone, district) is linked to the central database, but emergency cases are stored locally per device.
+
+### How secure is my data?
+
+- ✅ All emergency records stored locally (never uploaded to cloud)
+- ✅ SQLite database with encryption
+- ✅ Code obfuscated with ProGuard/R8
+- ✅ No third-party analytics or tracking
+- ✅ Open source - auditable code
+- See [SECURITY.md](SECURITY.md) for full details
+
+### How do I update the app?
+
+The app automatically checks for updates on startup. When a new version is available, you'll see a notification. Tap "Update" to download and install automatically.
+
+---
+
+## 📋 Version History
+
+### v1.1.0 (2025-01-21) 🔒 Security Hardened Release
+
+**Major Changes:**
+- 🚫 Removed all web platform support (mobile-only focus)
+- 🔒 Enabled ProGuard/R8 code obfuscation
+- 🔒 Centralized API configuration (AppConfig class)
+- 📱 Portrait-only orientation lock
+- 📄 Added MIT LICENSE with third-party attributions  
+- 📄 Added comprehensive SECURITY.md documentation
+- 🧹 Removed 200+ lines of unused web code
+- 🧹 Cleaned up development scripts and documentation
+
+**Security Enhancements:**
+- ✅ Enhanced input validation across all forms
+- ✅ Minimal permission principle enforced
+- ✅ Production debug logs disabled
+- ✅ SQL injection prevention verified (parameterized queries)
+- ✅ HTTPS-only network calls verified
+- ✅ Code obfuscation enabled in release builds
+
+**All v1.0.31 Features Included:**
+- ✅ Emergency type dropdown (ME, RC, FO, RO, WR, OO)
+- ✅ Quick Print All with auto-save to Downloads
+- ✅ Internet-required registration
+- ✅ Clean update dialog (no markdown symbols)
+- ✅ Hidden signature info button
+
+### v1.0.31 (2025-01-21)
+
+**New Features:**
+- Emergency Type Dropdown: Select from 6 predefined codes
+- Quick Print All: Print all EC records from sidebar with auto-save to Downloads
+
+**Security & Data Integrity:**
+- Registration now requires internet connection (prevents duplicate accounts)
+- Centralized database validation for all new registrations
+
+**UI Improvements:**
+- Fixed update dialog markdown rendering (## and ### now display correctly)
+- Changed button text from 'Download & Install' to 'Update'
+- Update dialog cannot be dismissed during download
+- Hidden signature info button from About screen
+
+**Bug Fixes:**
+- Update now runs more reliably
+- Better error handling in PDF generation
+
+### Previous Versions (v1.0.0 - v1.0.30)
+
 ### v1.2.8 (Current)
 - Enhanced home screen with larger, readable text
 - Fixed leaves counter (counts only leaves + gazetted holidays)
@@ -384,21 +527,43 @@ All **46 districts** of Punjab, Pakistan including:
 ## 🤝 Support
 
 **Developer:** NexiVault  
-**Contact:** +92 324 4266595 (WhatsApp)  
-**Website:** https://nexivault.dev  
-**GitHub:** https://github.com/Rehancodecraft/EC-Saver
+**Contact:** support@nexivault.com
+**GitHub:** https://github.com/Rehancodecraft/EC-Saver  
+**Security Issues:** See [SECURITY.md](SECURITY.md) for responsible disclosure
 
 ## 📄 License
 
-© 2025 NexiVault. All rights reserved.  
-Designed specifically for Rescue 1122 Pakistan personnel.
+MIT License - © 2025 NexiVault
+
+This software is open source and free to use. See [LICENSE](LICENSE) file for details.
+
+**Third-Party Licenses:**
+- Flutter & Dart (BSD 3-Clause)
+- Supabase (MIT)
+- SQLite (Public Domain)
+- PDF packages (Apache 2.0)
+- Material Icons (Apache 2.0)
+- Poppins Font (Open Font License)
+
+Full attribution in [LICENSE](LICENSE) file.
+
+## 🏢 Official Use
+
+**Designed exclusively for Rescue 1122 Pakistan personnel**
+
+This app is purpose-built for emergency responders to maintain professional records. All emergency data is stored locally on the device for privacy and offline accessibility.
 
 ## 🔗 Links
 
 - **GitHub Repository:** https://github.com/Rehancodecraft/EC-Saver
 - **Latest Releases:** https://github.com/Rehancodecraft/EC-Saver/releases
-- **Landing Page:** https://ec-saver.netlify.app (if deployed)
+- **Security Policy:** [SECURITY.md](SECURITY.md)
+- **License:** [LICENSE](LICENSE)
 
 ---
 
-**Note:** This app is designed specifically for Rescue 1122 Pakistan personnel and stores all data locally on the device for privacy and offline accessibility. Always backup your data by printing PDF reports before uninstalling.
+**⚠️ Important Notice:**
+
+This app stores all data locally on your device. **Always backup your data** by exporting PDF reports regularly. Uninstalling the app will permanently delete all emergency records, off days, and statistics.
+
+**Made with ❤️ for Rescue 1122 Pakistan heroes**
