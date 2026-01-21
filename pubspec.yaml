@@ -1,7 +1,7 @@
 name: emergency_cases_saver
 description: EC Saver - Emergency Cases Saver for Rescue 1122 Pakistan
 
-version: 1.0.30+30
+version: 1.0.31+31
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -37,6 +37,7 @@ dependencies:
   open_file: ^3.3.2
   shared_preferences: ^2.0.15
   app_links: ^6.3.2  # Explicit version to fix Gradle compatibility
+  connectivity_plus: ^6.0.5  # Internet connectivity check
 
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.30",
-  "versionCode": 30,
-  "apkUrl": "https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.0.30/ec-saver-v1.0.30-release.apk",
-  "releaseNotes": "🎉 New Features:\n• BMI Calculator with cm/inch/feet support\n• Improved color scheme (dark yellow for today's entries, red for leaves)\n• Date persistence across form entries\n• Better records UI with grey theme\n\n🐛 Bug Fixes:\n• Fixed card sizes on home screen\n• Improved color consistency",
+  "version": "1.0.31",
+  "versionCode": 31,
+  "apkUrl": "https://github.com/Rehancodecraft/EC-Saver/releases/download/v1.0.31/ec-saver-v1.0.31-release.apk",
+  "releaseNotes": "New Features:\n  • Emergency Type Dropdown: Select from predefined codes (ME, RC, FO, RO, WR, OO)\n  • Quick Print All: Print all EC records from sidebar with auto-save to Downloads\n\nSecurity & Data Integrity:\n  • Registration now requires internet connection (prevents duplicate accounts)\n  • Centralized database validation for all new registrations\n\nUI Improvements:\n  • Fixed update dialog markdown rendering (## and ### now display correctly)\n  • Changed button text from 'Download & Install' to 'Update'\n  • Update dialog cannot be dismissed during download\n  • Hidden signature info button from About screen\n\nBug Fixes:\n  • Update now runs more reliably\n  • Better error handling in PDF generation",
   "forceUpdate": false,
   "minSupportedVersion": "1.0.0"
 }

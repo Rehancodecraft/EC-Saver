@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/database_service.dart';
 import '../services/supabase_service.dart';
 import '../utils/constants.dart';
@@ -46,6 +47,41 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() => _isRegistering = true);
 
     try {
+      // CRITICAL: Check internet connectivity FIRST - no offline registration allowed
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final hasInternet = connectivityResult.contains(ConnectivityResult.mobile) ||
+                          connectivityResult.contains(ConnectivityResult.wifi) ||
+                          connectivityResult.contains(ConnectivityResult.ethernet);
+      
+      if (!hasInternet) {
+        if (mounted) {
+          setState(() => _isRegistering = false);
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.wifi_off, color: Colors.red),
+                  SizedBox(width: 12),
+                  Text('No Internet Connection'),
+                ],
+              ),
+              content: const Text(
+                'Registration requires an active internet connection to verify your details in the central database.\n\nPlease connect to the internet and try again.',
+                style: TextStyle(fontSize: 15),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
       // Check if user already registered locally
       final existingProfile = await _databaseService.getUserProfile();
       if (existingProfile != null) {
@@ -199,36 +235,34 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             Navigator.of(context).pushReplacementNamed('/home');
           }
         } else {
-          // Supabase failed (network issue) - allow offline registration
-          print('DEBUG: Network error, registering offline');
+          // Network error - should not happen since we checked connectivity above
+          // But if it does, block offline registration
+          print('DEBUG: Network error during Supabase sync');
           
-          final userProfile = UserProfile(
-            fullName: _fullNameController.text.trim(),
-            designation: _selectedDesignation!,
-            district: _selectedDistrict!,
-            tehsil: _selectedTehsil!,
-            mobileNumber: _mobileController.text.trim(),
-            registrationDate: DateTime.now(),
-            isVerified: true,
-          );
-          
-          await _databaseService.saveUserProfile(userProfile);
-
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
+            setState(() => _isRegistering = false);
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Row(
                   children: [
-                    const Icon(Icons.offline_bolt, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text('⚠️ ${result['message']}\nRegistered offline.')),
+                    Icon(Icons.error_outline, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('Registration Failed'),
                   ],
                 ),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 3),
+                content: Text(
+                  'Unable to connect to the central database.\n\n${result['message']}\n\nPlease check your internet connection and try again.',
+                  style: const TextStyle(fontSize: 15),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
               ),
             );
-            Navigator.of(context).pushReplacementNamed('/home');
           }
         }
       } catch (e) {
@@ -529,36 +563,36 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 
                 const SizedBox(height: 16),
                 
-                // Internet Notice
+                // Internet Required Notice
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: Colors.red[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue[200]!, width: 1.5),
+                    border: Border.all(color: Colors.red[200]!, width: 1.5),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.blue[700], size: 24),
+                      Icon(Icons.wifi, color: Colors.red[700], size: 24),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Internet Recommended',
+                              'Internet Required',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue[900],
+                                color: Colors.red[900],
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Registration works offline. Internet needed for central database sync.',
+                              'Active internet connection is required for registration to verify details in central database.',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.blue[700],
+                                color: Colors.red[700],
                               ),
                             ),
                           ],

@@ -1,5 +1,28 @@
 import 'package:flutter/material.dart';
 
+// Emergency Types
+class EmergencyTypes {
+  static const Map<String, String> types = {
+    'ME': 'Medical Emergency',
+    'RC': 'Road Traffic Crash',
+    'FO': 'Fire Operation',
+    'RO': 'Rescue Operation',
+    'WR': 'Water Rescue',
+    'OO': 'Other Operation',
+  };
+  
+  static List<String> get codes => types.keys.toList();
+  static List<String> get fullNames => types.values.toList();
+  
+  static String getFullName(String code) => types[code] ?? code;
+  static String getCode(String fullName) {
+    return types.entries
+        .firstWhere((entry) => entry.value == fullName, 
+                    orElse: () => const MapEntry('OO', 'Other Operation'))
+        .key;
+  }
+}
+
 // App Information
 class AppInfo {
   static const String appName = 'Emergency Cases Saver';

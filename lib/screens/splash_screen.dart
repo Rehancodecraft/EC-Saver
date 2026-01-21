@@ -168,7 +168,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         // Show dialog and continue after it's dismissed
         await showDialog(
           context: context,
-          barrierDismissible: !(info['forceUpdate'] ?? false),
+          barrierDismissible: false,
           builder: (context) => UpdateDialog(
             latestVersion: info['latestVersion'],
             latestBuild: info['latestBuild'] ?? 0,

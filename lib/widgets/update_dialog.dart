@@ -101,10 +101,19 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
   }
 
+  String _formatReleaseNotes(String notes) {
+    // Remove markdown symbols and format nicely
+    return notes
+        .replaceAll('###', '')
+        .replaceAll('##', '')
+        .replaceAll('•', '  •')
+        .trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !widget.forceUpdate,
+      canPop: !widget.forceUpdate && !_isDownloading,
       child: AlertDialog(
         title: Row(
           children: [
@@ -126,7 +135,13 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(widget.releaseNotes, maxLines: 6, overflow: TextOverflow.ellipsis),
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: SingleChildScrollView(
+                child: Text(
+                  _formatReleaseNotes(widget.releaseNotes),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             if (_isDownloading) ...[
@@ -178,7 +193,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       ),
                     )
                   : const Icon(Icons.download),
-              label: Text(_isDownloading ? 'Downloading...' : 'Download & Install'),
+              label: Text(_isDownloading ? 'Updating...' : 'Update'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[700],
                 foregroundColor: Colors.white,

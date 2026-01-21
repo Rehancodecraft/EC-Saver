@@ -3,6 +3,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/constants.dart';
 import '../services/database_service.dart';
 import '../models/user_profile.dart';
+import '../services/pdf_service.dart';
+import '../models/emergency.dart';
+import '../models/off_day.dart';
 
 class DrawerMenu extends StatefulWidget {
   final String currentRoute;
@@ -55,6 +58,100 @@ class _DrawerMenuState extends State<DrawerMenu> {
   // Method to refresh version (can be called after update)
   void refreshVersion() {
     _loadAppVersion();
+  }
+
+  Future<void> _handleQuickPrint(BuildContext context) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Generating PDF...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final db = DatabaseService();
+      
+      // Get all emergencies
+      final allEmergencies = await db.getAllEmergencies();
+      if (allEmergencies.isEmpty) {
+        if (context.mounted) {
+          Navigator.pop(context); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No emergency records to print')),
+          );
+        }
+        return;
+      }
+
+      // Group emergencies by month
+      final Map<String, List<Emergency>> groupedEmergencies = {};
+      for (var emergency in allEmergencies) {
+        final monthKey = '${emergency.emergencyDate.month.toString().padLeft(2, '0')}/${emergency.emergencyDate.year}';
+        groupedEmergencies.putIfAbsent(monthKey, () => []).add(emergency);
+      }
+
+      // Get all off days
+      final allOffDays = await db.getAllOffDays();
+      final Map<String, List<OffDay>> groupedOffDays = {};
+      for (var offDay in allOffDays) {
+        final monthKey = '${offDay.offDate.month.toString().padLeft(2, '0')}/${offDay.offDate.year}';
+        groupedOffDays.putIfAbsent(monthKey, () => []).add(offDay);
+      }
+
+      // Get user profile
+      final userProfile = await db.getUserProfile();
+
+      // Get sorted list of all months
+      final allMonths = {...groupedEmergencies.keys, ...groupedOffDays.keys}.toList();
+      allMonths.sort((a, b) => b.compareTo(a)); // Sort descending (newest first)
+
+      // Generate and save PDF
+      final filePath = await PdfService.quickPrintAndSave(
+        groupedEmergencies: groupedEmergencies,
+        selectedMonths: allMonths,
+        title: 'All EC Records',
+        userProfile: userProfile,
+        groupedOffDays: groupedOffDays,
+      );
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF saved to Downloads folder'),
+            action: SnackBarAction(
+              label: 'OK',
+              onPressed: () {},
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -186,6 +283,16 @@ class _DrawerMenuState extends State<DrawerMenu> {
                     if (widget.currentRoute != '/records') {
                       Navigator.pushNamed(context, '/records');
                     }
+                  },
+                ),
+
+                // Quick Print
+                ListTile(
+                  leading: const Icon(Icons.print, color: Colors.grey),
+                  title: const Text('Quick Print All'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _handleQuickPrint(context);
                   },
                 ),
 

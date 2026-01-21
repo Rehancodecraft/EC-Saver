@@ -268,19 +268,6 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.fingerprint,
-                              size: 16,
-                              color: AppColors.primaryRed,
-                            ),
-                            onPressed: () {
-                              SignatureInfoHelper.showSignatureDialog(context);
-                            },
-                            tooltip: 'View signature info (for debugging)',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
                         ],
                       ),
                       if (_latestVersion.isNotEmpty && _latestVersion != _version) ...[

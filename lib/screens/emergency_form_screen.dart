@@ -20,7 +20,6 @@ class EmergencyFormScreen extends StatefulWidget {
 class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _ecNumberController = TextEditingController();
-  final _emergencyTypeController = TextEditingController();
   final _notesController = TextEditingController();
   final DatabaseService _databaseService = DatabaseService();
 
@@ -33,6 +32,9 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
 
   // Entry type: 'emergency', 'off-day', 'leave', 'gazetted-day'
   String _entryType = 'emergency';
+  
+  // Selected emergency type code
+  String? _selectedEmergencyType;
 
   // Track if form has any input
   bool _hasInput = false;
@@ -45,7 +47,6 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
 
     // Listen to form changes
     _ecNumberController.addListener(_checkFormInput);
-    _emergencyTypeController.addListener(_checkFormInput);
     _notesController.addListener(_checkFormInput);
   }
 
@@ -55,7 +56,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
       // For off days/leave/gazetted, only check if date is selected
       if (_entryType == 'emergency') {
         _hasInput = _ecNumberController.text.isNotEmpty ||
-            _emergencyTypeController.text.isNotEmpty ||
+            _selectedEmergencyType != null ||
             _notesController.text.isNotEmpty;
       } else {
         _hasInput = _selectedDate != null;
@@ -66,7 +67,6 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
   @override
   void dispose() {
     _ecNumberController.dispose();
-    _emergencyTypeController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -226,7 +226,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
         final emergency = Emergency(
           ecNumber: _ecNumberController.text.trim(),
           emergencyDate: _selectedDate!,
-          emergencyType: _emergencyTypeController.text.trim(),
+          emergencyType: _selectedEmergencyType!,
           location: null,
           notes: _notesController.text.trim().isEmpty 
               ? null 
@@ -369,7 +369,7 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
                       // Clear EC number when switching to off day types
                       if (_entryType != 'emergency') {
                         _ecNumberController.clear();
-                        _emergencyTypeController.clear();
+                        _selectedEmergencyType = null;
                       }
                       _checkFormInput();
                     });
@@ -469,28 +469,30 @@ class _EmergencyFormScreenState extends State<EmergencyFormScreen> {
 
                 // Emergency Type (Only for emergency entries)
                 if (_entryType == 'emergency')
-                  TextFormField(
-                    controller: _emergencyTypeController,
+                  DropdownButtonFormField<String>(
+                    value: _selectedEmergencyType,
                     decoration: InputDecoration(
                       labelText: 'Emergency Type',
                       prefixIcon: const Icon(Icons.emergency),
-                      hintText: 'e.g., Road Accident',
-                      helperText: 'Max 2 words, 20 characters',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    textCapitalization: TextCapitalization.words,
-                    maxLength: 20,
+                    items: EmergencyTypes.types.entries.map((entry) {
+                      return DropdownMenuItem<String>(
+                        value: entry.key,
+                        child: Text('${entry.key} - ${entry.value}'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedEmergencyType = value;
+                        _checkFormInput();
+                      });
+                    },
                     validator: (value) {
-                      if (_entryType == 'emergency') {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter emergency type';
-                        }
-                        final words = value.trim().split(' ');
-                        if (words.length > 2) {
-                          return 'Maximum 2 words allowed';
-                        }
+                      if (_entryType == 'emergency' && (value == null || value.isEmpty)) {
+                        return 'Please select emergency type';
                       }
                       return null;
                     },
