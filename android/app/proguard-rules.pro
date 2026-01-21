@@ -1,13 +1,19 @@
 # EC Saver ProGuard Rules
 # Keep critical classes for app functionality
 
-# Flutter Wrapper
+# Flutter Wrapper - Keep ALL Flutter classes
+-keep class io.flutter.** { *; }
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.**  { *; }
 -keep class io.flutter.util.**  { *; }
 -keep class io.flutter.view.**  { *; }
--keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
+-keep class io.flutter.embedding.** { *; }
+-dontwarn io.flutter.**
+
+# Google Play Core (deferred components/split install)
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
 
 # Keep model classes (for SQLite/JSON serialization)
 -keep class com.nexivault.emergency_cases_saver.models.** { *; }
