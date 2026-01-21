@@ -343,6 +343,12 @@ class MobileDatabaseService implements DatabaseService {
   }
 
   @override
+  Future<List<OffDay>> getAllOffDays() async {
+    // Same as getOffDays - returns all off days
+    return getOffDays();
+  }
+
+  @override
   Future<List<OffDay>> getOffDaysByMonth(String monthYear) async {
     final db = await database;
     final allOffDays = await getOffDays();

@@ -315,7 +315,7 @@ class PdfService {
                       pw.SizedBox(height: 12),
                       
                       // User Information Section
-                      if (userProfile != null) ..[
+                      if (userProfile != null) ...[
                         pw.Container(
                           padding: const pw.EdgeInsets.all(12),
                           decoration: pw.BoxDecoration(

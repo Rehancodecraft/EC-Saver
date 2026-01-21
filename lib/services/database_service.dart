@@ -28,6 +28,7 @@ abstract class DatabaseService {
   Future<int> insertFeedback(String name, String message);
   Future<int> saveOffDay(OffDay offDay);
   Future<List<OffDay>> getOffDays();
+  Future<List<OffDay>> getAllOffDays();
   Future<List<OffDay>> getOffDaysByMonth(String monthYear);
   Future<OffDay?> getOffDayByDate(DateTime date);
   Future<bool> isOffDay(DateTime date);

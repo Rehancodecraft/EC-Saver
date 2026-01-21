@@ -144,6 +144,12 @@ class WebStorageService implements DatabaseService {
   }
 
   @override
+  Future<List<OffDay>> getAllOffDays() async {
+    // Same as getOffDays - returns all off days
+    return getOffDays();
+  }
+
+  @override
   Future<List<OffDay>> getOffDaysByMonth(String monthYear) async {
     final offDays = await getOffDays();
     return offDays.where((o) => o.getMonthYear() == monthYear).toList();
